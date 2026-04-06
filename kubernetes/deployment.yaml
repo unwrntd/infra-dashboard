@@ -25,6 +25,7 @@ spec:
       labels:
         app: infra-dashboard
     spec:
+      serviceAccountName: infra-dashboard
       containers:
         - name: dashboard
           image: ghcr.io/unwrntd/infra-dashboard:latest
