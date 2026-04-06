@@ -101,7 +101,7 @@ export default function ProxmoxGrid() {
         </div>
       </div>
 
-      <div className="overflow-auto max-h-48">
+      <div className="overflow-x-auto overflow-auto max-h-48">
         {loading ? (
           <div className="p-4 text-slate-400 text-sm">Loading...</div>
         ) : (

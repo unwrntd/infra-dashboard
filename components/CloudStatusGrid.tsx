@@ -83,7 +83,7 @@ export default function CloudStatusGrid() {
         {loading ? (
           <div className="text-xs text-slate-400">Checking status...</div>
         ) : (
-          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+          <div className="grid gap-1 sm:grid-cols-3" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
             {services.map((svc) => {
               const s = statuses[svc.name]
               return (

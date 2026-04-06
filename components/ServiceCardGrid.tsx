@@ -46,12 +46,12 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
   const upCount = Object.values(states).filter(s => s.status === 'up').length
 
   return (
-    <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
+    <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700 min-w-0">
       <div className="flex items-center justify-between px-3 py-2 bg-slate-900 border-b border-slate-700">
         <span className="text-xs font-semibold text-slate-300">{title}</span>
         <span className="text-[10px] text-slate-500">{upCount}/{services.length}</span>
       </div>
-      <div className="flex gap-1 p-1 overflow-x-auto">
+      <div className="flex gap-1 p-1 overflow-x-auto flex-nowrap">
         {services.map((svc) => {
           const state = states[svc.name]
           return (

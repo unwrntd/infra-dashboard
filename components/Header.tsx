@@ -16,10 +16,9 @@ function getTimeInTimezone(timezone: string): string {
 function getDateInTimezone(timezone: string): string {
   return new Date().toLocaleDateString('en-US', {
     timeZone: timezone,
-    weekday: 'long',
-    month: 'long',
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
-    year: 'numeric',
   })
 }
 
@@ -43,32 +42,32 @@ export default function Header({
   }, [timezone])
 
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700">
-      <div className="flex items-center gap-3">
-        <Bot className="w-6 h-6 text-cyan-400" />
-        <span className="text-lg font-semibold text-white">Baymax Infrastructure</span>
+    <header className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
+      <div className="flex items-center gap-2">
+        <Bot className="w-5 h-5 text-cyan-400" />
+        <span className="text-sm font-semibold text-white hidden sm:block">Baymax</span>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 text-slate-400">
-          <MapPin className="w-4 h-4" />
-          <span className="text-sm">{location}</span>
+      <div className="flex items-center gap-4">
+        <div className="hidden sm:flex items-center gap-1.5 text-slate-400">
+          <MapPin className="w-3.5 h-3.5" />
+          <span className="text-xs">{location}</span>
         </div>
 
         <div className="text-right">
-          <div className="text-2xl font-mono text-white">{time}</div>
-          <div className="text-xs text-slate-400">{date}</div>
+          <div className="text-lg sm:text-xl font-mono text-white">{time}</div>
+          <div className="text-[10px] sm:text-xs text-slate-400">{date}</div>
         </div>
 
         {issueCount > 0 ? (
-          <div className="flex items-center gap-1 px-2 py-1 bg-red-900/50 border border-red-700 rounded text-red-300 text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>{issueCount} ISSUE{issueCount > 1 ? 'S' : ''}</span>
+          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-red-900/50 border border-red-700 rounded text-red-300 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{issueCount} ISSUE{issueCount > 1 ? 'S' : ''}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/50 border border-emerald-700 rounded text-emerald-300 text-sm">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>ALL SYSTEMS GO</span>
+          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-900/50 border border-emerald-700 rounded text-emerald-300 text-xs">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">ALL CLEAR</span>
           </div>
         )}
       </div>
