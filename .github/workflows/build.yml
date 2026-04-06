@@ -16,6 +16,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -26,19 +37,12 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Extract metadata
-        run: |
-          IMAGE_TAG=$(date +%Y%m%d-%H%M%S)
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/infra-dashboard
-          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-
-      - name: Build and push (arm64 only — K8s cluster is all RPi5)
+      - name: Build and push (arm64)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: linux/arm64
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ github.repository_owner }}/infra-dashboard:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/infra-dashboard:latest
