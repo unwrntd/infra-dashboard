@@ -99,9 +99,17 @@ async function getProxmoxData() {
 
 async function getNtfyData() {
   try {
-    const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?limit=30')
+    // poll=1 returns queued messages then closes (no SSE stream wait)
+    const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?poll=1&limit=30')
     if (!res.ok) return []
-    return await res.json()
+    const text = await res.text()
+    const lines = text.trim().split('\n')
+    const alerts = []
+    for (const line of lines) {
+      if (!line || line.includes('"event":"open"')) continue
+      try { alerts.push(JSON.parse(line)) } catch { /* skip bad lines */ }
+    }
+    return alerts.slice(0, 30)
   } catch {
     return []
   }
