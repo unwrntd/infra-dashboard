@@ -30,8 +30,8 @@ function getAge(timestamp: string): string {
 }
 
 function NodeCard({ node }: { node: K8sNode }) {
-  const ready = node.conditions?.find(c => c.type === 'Ready')?.status === 'True'
-  const isHealthy = ready && node.status === 'Ready'
+  const conditionReady = node.conditions?.find(c => c.type === 'Ready')?.status === 'True'
+  const isHealthy = conditionReady && node.status === 'Ready'
 
   return (
     <div className={`flex flex-col p-1.5 rounded border text-[10px] ${isHealthy ? 'border-emerald-700/50 bg-emerald-900/10' : 'border-red-700/50 bg-red-900/10'}`}>
@@ -91,26 +91,24 @@ export default function K8sStatus() {
 
           if (data.k8sNodes && Array.isArray(data.k8sNodes)) {
             const parsedNodes = data.k8sNodes.map((n: any) => ({
-              name: n.metadata?.name || 'unknown',
-              status: n.status?.conditions?.find((c: any) => c.type === 'Ready')?.status || 'Unknown',
-              cpu: n.status.usage?.cpu ? parseFloat(n.status.usage.cpu.replace('n', '')) / 1e7 : 0,
-              memoryUsage: n.status.memory?.usedBytes && n.status.memory?.capacityBytes
-                ? Math.round((n.status.memory.usedBytes / n.status.memory.capacityBytes) * 100)
-                : undefined,
-              podCount: n.status.podCount || 0,
-              conditions: n.status.conditions || [],
+              name: n.name || n.metadata?.name || 'unknown',
+              status: n.status || n.metadata?.name ? 'Ready' : 'Unknown',
+              cpu: n.cpu || 0,
+              memoryUsage: n.memoryUsage,
+              podCount: n.podCount || 0,
+              conditions: n.conditions || [],
             }))
             setNodes(parsedNodes)
           }
 
           if (data.k8sPods && Array.isArray(data.k8sPods)) {
             const parsedPods = data.k8sPods.map((p: any) => ({
-              name: p.metadata?.name || 'unknown',
-              namespace: p.metadata?.namespace || 'default',
-              status: p.status?.phase || 'Unknown',
-              restarts: p.status.containerStatuses?.[0]?.restartCount || 0,
-              age: p.metadata?.creationTimestamp ? getAge(p.metadata.creationTimestamp) : '-',
-              node: p.spec?.nodeName || '-',
+              name: p.name || p.metadata?.name || 'unknown',
+              namespace: p.namespace || p.metadata?.namespace || 'default',
+              status: p.status || 'Unknown',
+              restarts: typeof p.restarts === 'number' ? p.restarts : 0,
+              age: p.age || '-',
+              node: p.node || p.spec?.nodeName || '-',
             }))
             setPods(parsedPods)
           }
