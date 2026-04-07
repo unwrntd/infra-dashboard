@@ -172,7 +172,7 @@ export default function K8sStatus() {
       </div>
 
       {/* Pods — scrollable, all namespaces */}
-      <div className="flex-1 overflow-auto max-h-32">
+      <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="text-xs text-slate-400 p-2">Loading pods...</div>
         ) : filteredPods.length === 0 ? (
