@@ -1,86 +1,118 @@
 import { NextResponse } from 'next/server'
 
-// Proxy all infrastructure data through Baymax to avoid CORS and leverage existing credentials
+const K8S_CA = process.env.KUBE_CA ? Buffer.from(process.env.KUBE_CA, 'base64').toString('utf8') : ''
+const K8S_TOKEN = process.env.KUBE_TOKEN || ''
+const K8S_HOST = '10.0.3.12'
+const K8S_PORT = '16443'
+const KUBE_URL = `https://${K8S_HOST}:${K8S_PORT}`
+
+// Write CA to temp file for curl
+let caPath = '/tmp/k8s-ca.pem'
+if (K8S_CA) {
+  require('fs').writeFileSync(caPath, K8S_CA)
+}
+
+async function k8sGet(path: string) {
+  if (!K8S_TOKEN) return { error: 'No K8s token' }
+  try {
+    const res = await fetch(`${KUBE_URL}${path}`, {
+      headers: { 'Authorization': `Bearer ${K8S_TOKEN}` },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return { error: `K8s API ${res.status}` }
+    return await res.json()
+  } catch (e: any) {
+    return { error: e.message }
+  }
+}
+
+async function getK8sData() {
+  const [nodes, pods] = await Promise.all([
+    k8sGet('/api/v1/nodes'),
+    k8sGet('/api/v1/pods?limit=500'),
+  ])
+
+  const parsedNodes = (nodes.items || []).map((n: any) => ({
+    name: n.metadata.name,
+    status: n.status.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True' ? 'Ready' : 'NotReady',
+    cpu: n.status.usage?.cpu ? parseFloat(n.status.usage.cpu.replace('n', '')) / 1e7 : 0,
+    memoryUsage: n.status.memory?.usedBytes && n.status.memory?.capacityBytes
+      ? Math.round((n.status.memory.usedBytes / n.status.memory.capacityBytes) * 100)
+      : null,
+    podCount: n.status.podCount || 0,
+    conditions: n.status.conditions || [],
+  }))
+
+  const parsedPods = (pods.items || []).map((p: any) => ({
+    name: p.metadata.name,
+    namespace: p.metadata.namespace,
+    status: p.status.phase,
+    restarts: p.status.containerStatuses?.[0]?.restartCount || 0,
+    age: p.metadata.creationTimestamp ? getAge(p.metadata.creationTimestamp) : '-',
+    node: p.spec.nodeName,
+  }))
+
+  return { nodes: parsedNodes, pods: parsedPods }
+}
+
+function getAge(timestamp: string): string {
+  const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
+  return `${Math.floor(seconds / 86400)}d`
+}
 
 export async function GET() {
   try {
-    const results: Record<string, unknown> = {}
+    const [k8s, pve, ntfyData] = await Promise.all([
+      getK8sData(),
+      getProxmoxData(),
+      getNtfyData(),
+    ])
 
-    // Proxmox data
-    try {
-      const pveResults = []
-      for (const node of ['proxmox01', 'proxmox02']) {
-        const res = await fetch(`https://10.0.3.31:8006/api2/json/nodes/${node}/lxc`, {
-          headers: { 'Authorization': `PVEAPIToken=${process.env.PVE_TOKEN}` },
-          signal: AbortSignal.timeout(5000)
-        })
-        if (res.ok) {
-          const data = await res.json()
-          pveResults.push({ node, containers: data.data || [] })
-        }
-      }
-      results.proxmox = pveResults
-    } catch (e) {
-      results.proxmox = { error: String(e) }
-    }
-
-    // K8s data
-    try {
-      const res = await fetch('http://10.0.3.12:16443/api/v1/nodes', {
-        headers: { 'Authorization': `Bearer ${process.env.KUBE_TOKEN}` },
-        signal: AbortSignal.timeout(5000)
-      })
-      if (res.ok) {
-        const data = await res.json()
-        results.k8sNodes = data.items || []
-      }
-    } catch (e) {
-      results.k8sNodes = { error: String(e) }
-    }
-
-    // Try to get pods from baymax-tools
-    try {
-      const res = await fetch('http://10.0.3.12:16443/api/v1/namespaces/baymax-tools/pods', {
-        headers: { 'Authorization': `Bearer ${process.env.KUBE_TOKEN}` },
-        signal: AbortSignal.timeout(5000)
-      })
-      if (res.ok) {
-        const data = await res.json()
-        results.k8sPods = data.items || []
-      }
-    } catch (e) {
-      results.k8sPods = { error: String(e) }
-    }
-
-    // ntfy alerts
-    try {
-      const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?limit=20', {
-        signal: AbortSignal.timeout(5000)
-      })
-      if (res.ok) {
-        results.alerts = await res.json()
-      }
-    } catch (e) {
-      results.alerts = { error: String(e) }
-    }
-
-    // LiteLLM health
-    try {
-      const res = await fetch('http://10.0.3.170:4000/health', {
-        headers: { 'Authorization': 'Bearer sk-1234' },
-        signal: AbortSignal.timeout(5000)
-      })
-      if (res.ok) {
-        results.litellm = await res.json()
-      } else {
-        results.litellm = { status: 'unhealthy', code: res.status }
-      }
-    } catch (e) {
-      results.litellm = { error: String(e) }
-    }
-
-    return NextResponse.json(results)
+    return NextResponse.json({
+      k8sNodes: k8s.nodes,
+      k8sPods: k8s.pods,
+      proxmox: pve,
+      alerts: ntfyData,
+    })
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
+  }
+}
+
+async function getProxmoxData() {
+  const PVE_TOKEN = process.env.PVE_TOKEN || ''
+  if (!PVE_TOKEN) return []
+
+  const nodes = ['proxmox01', 'proxmox02']
+  const results = await Promise.all(
+    nodes.map(async (node) => {
+      try {
+        const res = await fetch(`https://10.0.3.31:8006/api2/json/nodes/${node}/lxc`, {
+          headers: { 'Authorization': `PVEAPIToken=${PVE_TOKEN}` },
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!res.ok) return { node, error: `HTTP ${res.status}` }
+        const data = await res.json()
+        return { node, containers: data.data || [] }
+      } catch (e: any) {
+        return { node, error: e.message }
+      }
+    })
+  )
+  return results
+}
+
+async function getNtfyData() {
+  try {
+    const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?limit=30', {
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return []
+    return await res.json()
+  } catch {
+    return []
   }
 }

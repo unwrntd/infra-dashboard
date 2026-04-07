@@ -6,7 +6,8 @@ metadata:
 type: Opaque
 stringData:
   PVE_TOKEN: "clawd@pam!clawd_admin=2e1a4653-fcea-4ba0-82e7-455ffb02a1c4"
-  KUBE_TOKEN: "Baymax-kubeconfig-token"
+  KUBE_TOKEN: ""
+  KUBE_CA: ""
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -25,7 +26,7 @@ spec:
       labels:
         app: infra-dashboard
     spec:
-      serviceAccountName: infra-dashboard
+      serviceAccountName: infra-dashboard-reader
       containers:
         - name: dashboard
           image: ghcr.io/unwrntd/infra-dashboard:latest
@@ -42,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: dashboard-secrets
                   key: KUBE_TOKEN
+            - name: KUBE_CA
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-secrets
+                  key: KUBE_CA
           resources:
             requests:
               memory: "128Mi"

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bot, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Bot, MapPin, AlertTriangle, CheckCircle2, CloudSun } from 'lucide-react'
 
 function getTimeInTimezone(timezone: string): string {
   return new Date().toLocaleTimeString('en-US', {
@@ -22,6 +22,13 @@ function getDateInTimezone(timezone: string): string {
   })
 }
 
+interface Weather {
+  temp_F: string
+  condition: string
+  feelsLike_F: string
+  humidity: string
+}
+
 export default function Header({
   timezone = 'America/Chicago',
   location = 'Spring, TX',
@@ -32,14 +39,32 @@ export default function Header({
   issueCount?: number
 }) {
   const [time, setTime] = useState(getTimeInTimezone(timezone))
+  const [weather, setWeather] = useState<Weather | null>(null)
+
   const date = getDateInTimezone(timezone)
 
   useEffect(() => {
+    setTime(getTimeInTimezone(timezone))
     const interval = setInterval(() => {
       setTime(getTimeInTimezone(timezone))
     }, 1000)
     return () => clearInterval(interval)
   }, [timezone])
+
+  useEffect(() => {
+    async function fetchWeather() {
+      try {
+        const res = await fetch('/api/weather')
+        if (res.ok) {
+          const data = await res.json()
+          setWeather(data)
+        }
+      } catch {}
+    }
+    fetchWeather()
+    const interval = setInterval(fetchWeather, 300000) // 5 min
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <header className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
@@ -49,6 +74,14 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-4">
+        {weather && (
+          <div className="hidden md:flex items-center gap-1.5 text-slate-300">
+            <CloudSun className="w-4 h-4 text-yellow-400" />
+            <span className="text-sm font-medium">{weather.temp_F}°F</span>
+            <span className="text-xs text-slate-400 hidden lg:block">{weather.condition}</span>
+          </div>
+        )}
+
         <div className="hidden sm:flex items-center gap-1.5 text-slate-400">
           <MapPin className="w-3.5 h-3.5" />
           <span className="text-xs">{location}</span>

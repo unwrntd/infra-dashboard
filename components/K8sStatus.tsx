@@ -7,7 +7,6 @@ interface K8sNode {
   name: string
   status: string
   cpu?: number
-  memory?: number
   memoryUsage?: number
   podCount?: number
   conditions?: { type: string; status: string }[]
@@ -22,40 +21,57 @@ interface K8sPod {
   node: string
 }
 
+function getAge(timestamp: string): string {
+  const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
+  return `${Math.floor(seconds / 86400)}d`
+}
+
 function NodeCard({ node }: { node: K8sNode }) {
   const ready = node.conditions?.find(c => c.type === 'Ready')?.status === 'True'
   const isHealthy = ready && node.status === 'Ready'
 
   return (
-    <div className={`flex flex-col p-2 rounded border ${isHealthy ? 'border-emerald-700 bg-emerald-900/20' : 'border-red-700 bg-red-900/20'}`}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-semibold text-white">{node.name}</span>
+    <div className={`flex flex-col p-1.5 rounded border text-[10px] ${isHealthy ? 'border-emerald-700/50 bg-emerald-900/10' : 'border-red-700/50 bg-red-900/10'}`}>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="font-semibold text-white">{node.name}</span>
         {isHealthy ? (
-          <CheckCircle2 size={12} className="text-emerald-400" />
+          <CheckCircle2 size={10} className="text-emerald-400" />
         ) : (
-          <AlertCircle size={12} className="text-red-400" />
+          <AlertCircle size={10} className="text-red-400" />
         )}
       </div>
-      <div className="flex items-center gap-2 text-[10px] text-slate-400">
-        <span className="flex items-center gap-0.5"><Cpu size={10} />{node.cpu ? `${node.cpu.toFixed(0)}%` : '-'}</span>
-        <span className="flex items-center gap-0.5"><MemoryStick size={10} />{node.memoryUsage ? `${node.memoryUsage}%` : '-'}</span>
-        <span className="flex items-center gap-0.5"><Box size={10} />{node.podCount || '-'}</span>
+      <div className="flex items-center gap-2 text-slate-400">
+        <span className="flex items-center gap-0.5">
+          <Cpu size={9} />{node.cpu ? `${node.cpu.toFixed(0)}%` : '-'}
+        </span>
+        <span className="flex items-center gap-0.5">
+          <MemoryStick size={9} />{node.memoryUsage ? `${node.memoryUsage}%` : '-'}
+        </span>
+        <span className="flex items-center gap-0.5">
+          <Box size={9} />{node.podCount || '-'}
+        </span>
       </div>
     </div>
   )
 }
 
-function PodRow({ pod }: { pod: K8sPod }) {
-  const isCrash = pod.status === 'CrashLoopBackOff' || pod.restarts > 5
+function PodRow({ pod, compact = false }: { pod: K8sPod; compact?: boolean }) {
+  const isCrash = pod.status === 'CrashLoopBackOff' || pod.status === 'Error'
   const isPending = pod.status === 'Pending' || pod.status === 'ContainerCreating'
+  const dotColor = isCrash ? 'bg-red-400' : isPending ? 'bg-yellow-400' : 'bg-emerald-400'
 
   return (
-    <div className={`flex items-center gap-2 px-2 py-1 text-[10px] border-b border-slate-700/30 last:border-0 ${isCrash ? 'text-red-400' : isPending ? 'text-yellow-400' : 'text-slate-300'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isCrash ? 'bg-red-400' : isPending ? 'bg-yellow-400' : 'bg-emerald-400'}`} />
-      <span className="text-slate-500 w-24 truncate flex-shrink-0">{pod.namespace}</span>
-      <span className="flex-1 truncate text-white">{pod.name}</span>
-      <span className="text-slate-400 w-16 text-right">{pod.restarts > 0 ? `${pod.restarts}↻` : ''}</span>
-      <span className="text-slate-500 w-16 text-right">{pod.age}</span>
+    <div className={`flex items-center gap-1.5 px-1.5 py-0.5 text-[10px] ${isCrash ? 'text-red-400' : isPending ? 'text-yellow-400' : 'text-slate-300'} ${compact ? '' : 'border-b border-slate-700/30'}`}>
+      <span className={`w-1 h-1 rounded-full flex-shrink-0 ${dotColor}`} />
+      <span className="text-slate-500 w-20 truncate flex-shrink-0">{pod.namespace}</span>
+      <span className="flex-1 truncate">{pod.name}</span>
+      {pod.restarts > 0 && (
+        <span className="text-red-400 flex-shrink-0">{pod.restarts}↺</span>
+      )}
+      <span className="text-slate-500 flex-shrink-0 w-12 text-right">{pod.age}</span>
     </div>
   )
 }
@@ -64,6 +80,7 @@ export default function K8sStatus() {
   const [nodes, setNodes] = useState<K8sNode[]>([])
   const [pods, setPods] = useState<K8sPod[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'problem'>('all')
 
   useEffect(() => {
     async function fetchData() {
@@ -76,12 +93,12 @@ export default function K8sStatus() {
             const parsedNodes = data.k8sNodes.map((n: any) => ({
               name: n.metadata?.name || 'unknown',
               status: n.status?.conditions?.find((c: any) => c.type === 'Ready')?.status || 'Unknown',
-              cpu: parseFloat(n.status?.usage?.cpu?.replace('n', '')) / 1e7 || 0,
-              memoryUsage: n.status?.memory?.usedBytes && n.status?.memory?.capacityBytes
-                ? (n.status.memory.usedBytes / n.status.memory.capacityBytes * 100)
+              cpu: n.status.usage?.cpu ? parseFloat(n.status.usage.cpu.replace('n', '')) / 1e7 : 0,
+              memoryUsage: n.status.memory?.usedBytes && n.status.memory?.capacityBytes
+                ? Math.round((n.status.memory.usedBytes / n.status.memory.capacityBytes) * 100)
                 : undefined,
-              podCount: n.status?.podCount || 0,
-              conditions: n.status?.conditions || [],
+              podCount: n.status.podCount || 0,
+              conditions: n.status.conditions || [],
             }))
             setNodes(parsedNodes)
           }
@@ -91,7 +108,7 @@ export default function K8sStatus() {
               name: p.metadata?.name || 'unknown',
               namespace: p.metadata?.namespace || 'default',
               status: p.status?.phase || 'Unknown',
-              restarts: p.status?.containerStatuses?.[0]?.restartCount || 0,
+              restarts: p.status.containerStatuses?.[0]?.restartCount || 0,
               age: p.metadata?.creationTimestamp ? getAge(p.metadata.creationTimestamp) : '-',
               node: p.spec?.nodeName || '-',
             }))
@@ -109,48 +126,69 @@ export default function K8sStatus() {
     return () => clearInterval(interval)
   }, [])
 
-  const problemPods = pods.filter(p => p.status === 'CrashLoopBackOff' || p.restarts > 5 || p.status === 'Pending')
+  const namespaces = [...new Set(pods.map(p => p.namespace))]
+  const problemPods = pods.filter(p => p.status === 'CrashLoopBackOff' || p.status === 'Error' || p.status === 'Pending' || p.status === 'ContainerCreating')
+  const filteredPods = filter === 'problem' ? problemPods : pods
 
   return (
-    <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
-      <div className="flex items-center justify-between px-3 py-2 bg-slate-900 border-b border-slate-700">
+    <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700 h-full">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
         <div className="flex items-center gap-2">
           <Box size={14} className="text-cyan-400" />
           <span className="text-sm font-semibold text-white">Kubernetes</span>
           <span className="text-xs text-slate-400">{nodes.length} nodes · {pods.length} pods</span>
         </div>
-        {problemPods.length > 0 && (
-          <span className="text-xs text-red-400">{problemPods.length} issues</span>
-        )}
+        <div className="flex items-center gap-2">
+          {problemPods.length > 0 && (
+            <span className="text-xs text-red-400">{problemPods.length} issues</span>
+          )}
+          <div className="flex gap-1">
+            {['all', 'problem'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f as typeof filter)}
+                className={`px-1.5 py-0.5 text-[10px] rounded ${filter === f ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Nodes row */}
-      <div className="grid grid-cols-4 gap-1 p-2 border-b border-slate-700">
+      <div className="grid grid-cols-4 gap-1 p-1.5 border-b border-slate-700">
         {loading ? (
-          <div className="col-span-4 text-xs text-slate-400 p-2">Loading nodes...</div>
+          <div className="col-span-4 text-xs text-slate-400 p-1">Loading...</div>
         ) : (
           nodes.map(n => <NodeCard key={n.name} node={n} />)
         )}
       </div>
 
-      {/* Pods list */}
-      <div className="max-h-32 overflow-auto">
+      {/* Pods — scrollable, all namespaces */}
+      <div className="flex-1 overflow-auto max-h-32">
         {loading ? (
           <div className="text-xs text-slate-400 p-2">Loading pods...</div>
-        ) : pods.length === 0 ? (
-          <div className="text-xs text-slate-400 p-2">No pods found</div>
+        ) : filteredPods.length === 0 ? (
+          <div className="text-xs text-slate-500 p-2">No pods to show</div>
         ) : (
-          pods.slice(0, 50).map((p, i) => <PodRow key={`${p.namespace}-${p.name}-${i}`} pod={p} />)
+          <>
+            {/* Namespace group headers */}
+            {namespaces.filter(ns => filter === 'all' || problemPods.some(p => p.namespace === ns)).map(ns => {
+              const nsPods = filteredPods.filter(p => p.namespace === ns)
+              if (nsPods.length === 0) return null
+              return (
+                <div key={ns}>
+                  <div className="sticky top-0 bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-500 font-medium border-b border-slate-700/50">
+                    {ns} ({nsPods.length})
+                  </div>
+                  {nsPods.map((p, i) => <PodRow key={`${p.namespace}-${p.name}-${i}`} pod={p} compact />)}
+                </div>
+              )
+            })}
+          </>
         )}
       </div>
     </div>
   )
-}
-
-function getAge(timestamp: string): string {
-  const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
-  return `${Math.floor(seconds / 86400)}d`
 }
