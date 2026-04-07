@@ -10,7 +10,6 @@ async function k8sGet(path: string) {
   try {
     const res = await fetch(`${KUBE_URL}${path}`, {
       headers: { 'Authorization': `Bearer ${K8S_TOKEN}` },
-      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) return { error: `K8s API ${res.status}` }
     return await res.json()
@@ -58,6 +57,7 @@ function getAge(timestamp: string): string {
 
 export async function GET() {
   try {
+    // Run all fetches in parallel with generous timeouts
     const [k8s, pve, ntfyData] = await Promise.all([
       getK8sData(),
       getProxmoxData(),
@@ -85,7 +85,6 @@ async function getProxmoxData() {
       try {
         const res = await fetch(`https://10.0.3.31:8006/api2/json/nodes/${node}/lxc`, {
           headers: { 'Authorization': `PVEAPIToken=${PVE_TOKEN}` },
-          signal: AbortSignal.timeout(5000),
         })
         if (!res.ok) return { node, error: `HTTP ${res.status}` }
         const data = await res.json()
@@ -100,9 +99,7 @@ async function getProxmoxData() {
 
 async function getNtfyData() {
   try {
-    const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?limit=30', {
-      signal: AbortSignal.timeout(5000),
-    })
+    const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?limit=30')
     if (!res.ok) return []
     return await res.json()
   } catch {
