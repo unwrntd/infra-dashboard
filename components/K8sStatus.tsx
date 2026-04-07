@@ -88,17 +88,19 @@ export default function K8sStatus() {
         const res = await fetch('/api/infrastructure')
         if (res.ok) {
           const data = await res.json()
+          console.log('[K8s] Received:', data.k8sNodes?.length, 'nodes,', data.k8sPods?.length, 'pods, namespaces:', [...new Set((data.k8sPods||[]).map((p:any)=>p.namespace))])
 
           if (data.k8sNodes && Array.isArray(data.k8sNodes)) {
             const parsedNodes = data.k8sNodes.map((n: any) => ({
               name: n.name || n.metadata?.name || 'unknown',
-              status: n.status || n.metadata?.name ? 'Ready' : 'Unknown',
+              status: n.status || (n.metadata?.name ? 'Ready' : 'Unknown'),
               cpu: n.cpu || 0,
               memoryUsage: n.memoryUsage,
               podCount: n.podCount || 0,
               conditions: n.conditions || [],
             }))
             setNodes(parsedNodes)
+            console.log('[K8s] Set nodes:', parsedNodes.length, parsedNodes.map(n=>n.name))
           }
 
           if (data.k8sPods && Array.isArray(data.k8sPods)) {
@@ -111,7 +113,10 @@ export default function K8sStatus() {
               node: p.node || p.spec?.nodeName || '-',
             }))
             setPods(parsedPods)
+            console.log('[K8s] Set pods:', parsedPods.length, 'namespaces:', [...new Set(parsedPods.map(p=>p.namespace))])
           }
+        } else {
+          console.error('[K8s] HTTP error:', res.status)
         }
       } catch (e) {
         console.error('K8s fetch error:', e)
