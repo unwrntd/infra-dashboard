@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from 'redis'
 
-const REDIS_URL = 'redis://10.0.3.12:30637'
+const REDIS_HOST = process.env.REDIS_HOST || '10.0.3.12'
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '30637')
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD || ''
 
 async function getBriefing() {
   try {
-    const client = createClient({ url: REDIS_URL })
+    const url = `redis://${REDIS_HOST}:${REDIS_PORT}`
+    const client = createClient({ url, password: REDIS_PASSWORD || undefined })
     await client.connect()
     const data = await client.get('baymax:calendar:cache')
     await client.disconnect()
@@ -18,7 +21,7 @@ async function getBriefing() {
       }
     }
   } catch (e) {
-    console.error('Redis error:', e)
+    console.error('Briefing error:', e)
   }
   
   return {

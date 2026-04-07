@@ -8,6 +8,7 @@ stringData:
   PVE_TOKEN: "clawd@pam!clawd_admin=2e1a4653-fcea-4ba0-82e7-455ffb02a1c4"
   KUBE_TOKEN: ""
   KUBE_CA: ""
+  REDIS_PASSWORD: "js+VEk19D5QsCqVD08LMbhNtS14ki9xL"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +46,11 @@ spec:
                 secretKeyRef:
                   name: dashboard-secrets
                   key: KUBE_TOKEN
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-secrets
+                  key: REDIS_PASSWORD
           resources:
             requests:
               memory: "128Mi"
