@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server'
+import { readFileSync } from 'fs'
 
-const K8S_TOKEN = process.env.KUBE_TOKEN || ''
+// Use in-cluster service account token (auto-mounted in K8s)
+function getK8sToken() {
+  try {
+    return readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim()
+  } catch {
+    return process.env.KUBE_TOKEN || ''
+  }
+}
 const KUBE_URL = 'https://kubernetes.default.svc.cluster.local'
 
 async function k8sGet(path: string) {
+  const K8S_TOKEN = getK8sToken()
   if (!K8S_TOKEN) return { error: 'No K8s token' }
   try {
     const res = await fetch(`${KUBE_URL}${path}`, {
