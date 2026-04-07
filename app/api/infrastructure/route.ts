@@ -17,21 +17,39 @@ async function k8sGet(path: string) {
 }
 
 async function getK8sData() {
-  const [nodes, pods] = await Promise.all([
+  // Fetch nodes, pods, and node metrics in parallel
+  const [nodes, pods, metrics] = await Promise.all([
     k8sGet('/api/v1/nodes'),
     k8sGet('/api/v1/pods?limit=500'),
+    k8sGet('/apis/metrics.k8s.io/v1beta1/nodes'),
   ])
 
-  const parsedNodes = (nodes.items || []).map((n: any) => ({
-    name: n.metadata.name,
-    status: n.status.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True' ? 'Ready' : 'NotReady',
-    cpu: n.status.usage?.cpu ? parseFloat(n.status.usage.cpu.replace('n', '')) / 1e7 : 0,
-    memoryUsage: n.status.memory?.usedBytes && n.status.memory?.capacityBytes
-      ? Math.round((n.status.memory.usedBytes / n.status.memory.capacityBytes) * 100)
-      : null,
-    podCount: n.status.podCount || 0,
-    conditions: n.status.conditions || [],
-  }))
+  // Build metrics lookup: nodeName -> { cpu, memory }
+  const metricsMap: Record<string, { cpu: number; memoryUsage: number }> = {}
+  if (metrics.items) {
+    for (const m of metrics.items) {
+      const cpuNanocores = parseFloat(m.usage.cpu.replace('n', '')) || 0
+      const cpuPercent = cpuNanocores / 1e7 // convert nanocores to % of one core
+      const memUsed = parseInt(m.usage.memory.replace('Ki', '')) || 0
+      const memCapacity = memUsed // approximate — we'll skip capacity-based %
+      metricsMap[m.metadata.name] = {
+        cpu: Math.round(cpuPercent * 100) / 100,
+        memoryUsage: memUsed, // store Ki used
+      }
+    }
+  }
+
+  const parsedNodes = (nodes.items || []).map((n: any) => {
+    const m = metricsMap[n.metadata.name]
+    return {
+      name: n.metadata.name,
+      status: n.status.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True' ? 'Ready' : 'NotReady',
+      cpu: m?.cpu || 0,
+      memoryUsage: m?.memoryUsage ? Math.round((m.memoryUsage / 1024 / 1024) * 10) / 10 : null, // GiB used
+      podCount: n.status.podCount || 0,
+      conditions: n.status.conditions || [],
+    }
+  })
 
   const parsedPods = (pods.items || []).map((p: any) => ({
     name: p.metadata.name,
@@ -55,7 +73,6 @@ function getAge(timestamp: string): string {
 
 export async function GET() {
   try {
-    // Run all fetches in parallel with generous timeouts
     const [k8s, pve, ntfyData] = await Promise.all([
       getK8sData(),
       getProxmoxData(),
@@ -97,7 +114,6 @@ async function getProxmoxData() {
 
 async function getNtfyData() {
   try {
-    // poll=1 returns queued messages then closes (no SSE stream wait)
     const res = await fetch('http://10.0.3.12:31180/baymax-alerts/json?poll=1&limit=30')
     if (!res.ok) return []
     const text = await res.text()
