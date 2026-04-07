@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 
 const K8S_TOKEN = process.env.KUBE_TOKEN || ''
-const K8S_HOST = '10.0.3.12'
-const K8S_PORT = '16443'
-const KUBE_URL = `https://${K8S_HOST}:${K8S_PORT}`
+const KUBE_URL = 'https://kubernetes.default.svc.cluster.local'
 
 async function k8sGet(path: string) {
   if (!K8S_TOKEN) return { error: 'No K8s token' }
