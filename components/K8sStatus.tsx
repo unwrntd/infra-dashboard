@@ -91,7 +91,7 @@ export default function K8sStatus() {
           console.log('[K8s] Received:', data.k8sNodes?.length, 'nodes,', data.k8sPods?.length, 'pods, namespaces:', [...new Set((data.k8sPods||[]).map((p:any)=>p.namespace))])
 
           if (data.k8sNodes && Array.isArray(data.k8sNodes)) {
-            const parsedNodes = data.k8sNodes.map((n: any) => ({
+            const parsedNodes: K8sNode[] = data.k8sNodes.map((n: any) => ({
               name: n.name || n.metadata?.name || 'unknown',
               status: n.status || (n.metadata?.name ? 'Ready' : 'Unknown'),
               cpu: n.cpu || 0,
@@ -100,11 +100,12 @@ export default function K8sStatus() {
               conditions: n.conditions || [],
             }))
             setNodes(parsedNodes)
-            console.log('[K8s] Set nodes:', parsedNodes.length, parsedNodes.map(n=>n.name))
+            console.log('[K8s] Set nodes:', parsedNodes.length)
+            console.log('[K8s] node names:', parsedNodes.map((n: K8sNode) => n.name).join(', '))
           }
 
           if (data.k8sPods && Array.isArray(data.k8sPods)) {
-            const parsedPods = data.k8sPods.map((p: any) => ({
+            const parsedPods: K8sPod[] = data.k8sPods.map((p: any) => ({
               name: p.name || p.metadata?.name || 'unknown',
               namespace: p.namespace || p.metadata?.namespace || 'default',
               status: p.status || 'Unknown',
