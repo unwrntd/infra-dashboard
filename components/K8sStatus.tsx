@@ -142,7 +142,7 @@ export default function K8sStatus() {
         <div className="flex items-center gap-2">
           <Box size={14} className="text-cyan-400" />
           <span className="text-sm font-semibold text-white">Kubernetes</span>
-          <span className="text-xs text-slate-400">{nodes.length} nodes · {pods.length} pods</span>
+          <span className="text-xs text-slate-400">{nodes.length} nodes · {pods.length} pods · {namespaces.length} ns</span>
         </div>
         <div className="flex items-center gap-2">
           {problemPods.length > 0 && (
