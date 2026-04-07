@@ -8,87 +8,76 @@ import CloudStatusGrid from '@/components/CloudStatusGrid'
 import ProxmoxGrid from '@/components/ProxmoxGrid'
 import K8sStatus from '@/components/K8sStatus'
 import ServiceCardGrid from '@/components/ServiceCardGrid'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
+
+function Panel({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  )
+}
 
 export default function Dashboard() {
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-white overflow-hidden">
 
-      {/* Header — always visible */}
       <Header
         timezone={DASHBOARD_CONFIG.location.timezone}
         location={DASHBOARD_CONFIG.location.name}
       />
 
-      {/* Quick Links — horizontal scroll on mobile */}
       <QuickLinks />
 
-      {/* Main Content */}
       <div className="flex-1 overflow-auto">
 
-        {/* Desktop: 3-column layout */}
+        {/* Desktop */}
         <div className="hidden lg:grid lg:grid-cols-12 gap-2 p-2 min-h-full">
 
-          {/* Left Column: Alerts + Briefing */}
           <div className="col-span-2 flex flex-col gap-2">
-            <div className="flex-1 min-h-0">
-              <AlertsPanel />
-            </div>
-            <div className="h-64 flex-shrink-0">
-              <BriefingPanel />
-            </div>
+            <Panel><AlertsPanel /></Panel>
+            <div className="h-64 flex-shrink-0"><Panel><BriefingPanel /></Panel></div>
           </div>
 
-          {/* Middle Column: Cloud + Proxmox */}
           <div className="col-span-5 flex flex-col gap-2">
-            <div className="flex-1 min-h-0">
-              <CloudStatusGrid />
-            </div>
-            <div className="flex-1 min-h-0">
-              <ProxmoxGrid />
-            </div>
+            <Panel><CloudStatusGrid /></Panel>
+            <Panel><ProxmoxGrid /></Panel>
           </div>
 
-          {/* Right Column: K8s */}
           <div className="col-span-5 flex flex-col gap-2">
-            <div className="flex-1 min-h-0">
-              <K8sStatus />
-            </div>
+            <Panel><K8sStatus /></Panel>
           </div>
         </div>
 
-        {/* Tablet: 2-column */}
+        {/* Tablet */}
         <div className="hidden md:grid lg:hidden grid-cols-2 gap-2 p-2">
           <div className="flex flex-col gap-2">
-            <AlertsPanel />
-            <BriefingPanel />
+            <Panel><AlertsPanel /></Panel>
+            <Panel><BriefingPanel /></Panel>
           </div>
           <div className="flex flex-col gap-2">
-            <CloudStatusGrid />
-            <ProxmoxGrid />
-            <K8sStatus />
+            <Panel><CloudStatusGrid /></Panel>
+            <Panel><ProxmoxGrid /></Panel>
+            <Panel><K8sStatus /></Panel>
           </div>
         </div>
 
-        {/* Mobile: single column stack */}
+        {/* Mobile */}
         <div className="grid-cols-1 grid gap-2 p-2 md:hidden">
-          <AlertsPanel />
-          <BriefingPanel />
-          <CloudStatusGrid />
-          <ProxmoxGrid />
-          <K8sStatus />
+          <Panel><AlertsPanel /></Panel>
+          <Panel><BriefingPanel /></Panel>
+          <Panel><CloudStatusGrid /></Panel>
+          <Panel><ProxmoxGrid /></Panel>
+          <Panel><K8sStatus /></Panel>
         </div>
 
       </div>
 
-      {/* Bottom Row: Service Stacks */}
+      {/* Bottom Row */}
       <div className="flex gap-2 px-2 pb-2 overflow-x-auto">
-        <div className="flex-1 min-w-0">
-          <ServiceCardGrid title="Media Stack" services={DASHBOARD_CONFIG.mediaStack} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <ServiceCardGrid title="AI Stack" services={DASHBOARD_CONFIG.aiStack} />
-        </div>
+        <div className="flex-1 min-w-0"><Panel><ServiceCardGrid title="Media Stack" services={DASHBOARD_CONFIG.mediaStack} /></Panel></div>
+        <div className="flex-1 min-w-0"><Panel><ServiceCardGrid title="AI Stack" services={DASHBOARD_CONFIG.aiStack} /></Panel></div>
       </div>
 
     </div>

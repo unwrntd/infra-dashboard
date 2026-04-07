@@ -15,29 +15,26 @@ export default function CloudStatusGrid() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function checkStatus(service: typeof DASHBOARD_CONFIG.cloudServices[0]): Promise<[string, ServiceStatus]> {
+    async function checkService(service: typeof DASHBOARD_CONFIG.cloudServices[0]): Promise<[string, ServiceStatus]> {
       // For self-hosted services, do a real health check
       if (service.isSelfHosted && service.url) {
         try {
-          const res = await fetch(service.url, {
+          await fetch(service.url, {
             signal: AbortSignal.timeout(5000),
-            mode: 'no-cors'
           })
-          // no-cors mode means we can't read response, but if no error = reachable
           return [service.name, { name: service.name, status: 'operational', lastChecked: new Date().toISOString() }]
         } catch {
           return [service.name, { name: service.name, status: 'degraded', lastChecked: new Date().toISOString() }]
         }
       }
 
-      // For cloud services, we'd call ServiceStatus.io API
-      // For now, show all as unknown (manual config)
+      // For cloud services, show as unknown (manual config required)
       return [service.name, { name: service.name, status: 'unknown', lastChecked: new Date().toISOString() }]
     }
 
     async function fetchAll() {
       const results = await Promise.all(
-        DASHBOARD_CONFIG.cloudServices.map(checkStatus)
+        DASHBOARD_CONFIG.cloudServices.map(checkService)
       )
       const map: Record<string, ServiceStatus> = {}
       results.forEach(([name, status]) => { map[name] = status })
@@ -83,7 +80,7 @@ export default function CloudStatusGrid() {
         {loading ? (
           <div className="text-xs text-slate-400">Checking status...</div>
         ) : (
-          <div className="grid gap-1 sm:grid-cols-3" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
             {services.map((svc) => {
               const s = statuses[svc.name]
               return (

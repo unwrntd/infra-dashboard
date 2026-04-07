@@ -21,9 +21,12 @@ interface MediaStats {
 async function checkService(ip: string, port: number, path: string): Promise<{ status: 'up' | 'down' | 'unknown'; latency?: number }> {
   const start = Date.now()
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
     const res = await fetch(`http://${ip}:${port}${path}`, {
-      signal: AbortSignal.timeout(3000),
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     const latency = Date.now() - start
     return { status: res.ok ? 'up' : 'down', latency }
   } catch {
