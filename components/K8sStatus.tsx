@@ -134,6 +134,8 @@ export default function K8sStatus() {
   const problemPods = pods.filter(p => p.status === 'CrashLoopBackOff' || p.status === 'Error' || p.status === 'Pending' || p.status === 'ContainerCreating')
   const filteredPods = filter === 'problem' ? problemPods : pods
 
+  console.log('[K8s] filter:', filter, '| totalPods:', pods.length, '| namespaces:', namespaces.length, '| filteredPods:', filteredPods.length)
+
   return (
     <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700 h-full">
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
