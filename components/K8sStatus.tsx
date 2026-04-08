@@ -60,8 +60,6 @@ const NICE_NAMES: Record<string, string> = {
   'qbittorrent': 'qBittorrent',
   'coder-runner': 'Code Runner',
   'speedtest': 'Speedtest',
-  'archivebox': 'Archivebox',
-  'plantit': 'Plant-it',
 }
 
 // System namespaces to exclude from app listing
