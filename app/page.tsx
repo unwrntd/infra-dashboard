@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import GridLayout, { WidthProvider } from 'react-grid-layout'
+import { ResponsiveGridLayout } from 'react-grid-layout'
 import Header from '@/components/Header'
 import QuickLinks from '@/components/QuickLinks'
 import AlertsPanel from '@/components/AlertsPanel'
@@ -13,8 +13,6 @@ import ServiceCardGrid from '@/components/ServiceCardGrid'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
 import 'react-grid-layout/css/styles.css'
-
-const ResponsiveGridLayout = WidthProvider(GridLayout)
 
 const STORAGE_KEY = 'baymax-dashboard-layout-v1'
 
