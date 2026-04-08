@@ -91,7 +91,8 @@ export async function GET() {
     return NextResponse.json({
       k8sNodes: k8s.nodes,
       k8sPods: k8s.pods,
-      proxmox: pve,
+      proxmoxHosts: pve.hosts,
+      proxmoxContainers: pve.containers,
       alerts: ntfyData,
     })
   } catch (error) {
@@ -101,24 +102,68 @@ export async function GET() {
 
 async function getProxmoxData() {
   const PVE_TOKEN = process.env.PVE_TOKEN || ''
-  if (!PVE_TOKEN) return []
+  if (!PVE_TOKEN) return { hosts: [], containers: [] }
 
-  const nodes = ['proxmox01', 'proxmox02']
-  const results = await Promise.all(
-    nodes.map(async (node) => {
+  const nodeNames = ['proxmox01', 'proxmox02']
+
+  // Fetch host status and LXC containers in parallel per node
+  const nodeResults = await Promise.all(
+    nodeNames.map(async (node) => {
+      const baseUrl = `https://10.0.3.31:8006/api2/json`
+      const headers = { 'Authorization': `PVEAPIToken=${PVE_TOKEN}` }
       try {
-        const res = await fetch(`https://10.0.3.31:8006/api2/json/nodes/${node}/lxc`, {
-          headers: { 'Authorization': `PVEAPIToken=${PVE_TOKEN}` },
-        })
-        if (!res.ok) return { node, error: `HTTP ${res.status}` }
-        const data = await res.json()
-        return { node, containers: data.data || [] }
+        const [statusRes, lxcRes] = await Promise.all([
+          fetch(`${baseUrl}/nodes/${node}/status`, { headers }),
+          fetch(`${baseUrl}/nodes/${node}/lxc`, { headers }),
+        ])
+        const statusData = statusRes.ok ? await statusRes.json() : null
+        const lxcData = lxcRes.ok ? await lxcRes.json() : null
+        return {
+          node,
+          host: statusData?.data ? {
+            uptime: statusData.data.uptime || 0,
+            cpu: statusData.data.cpu || 0,
+            memory: statusData.data.memory ? {
+              used: statusData.data.memory.used || 0,
+              total: statusData.data.memory.total || 0,
+            } : null,
+            disk: statusData.data.disk ? {
+              used: statusData.data.disk.used || 0,
+              total: statusData.data.disk.total || 0,
+            } : null,
+            loadavg: statusData.data.loadavg || [],
+          } : null,
+          containers: lxcData?.data || [],
+        }
       } catch (e: any) {
-        return { node, error: e.message }
+        return { node, host: null, containers: [], error: e.message }
       }
     })
   )
-  return results
+
+  const hosts = nodeResults.map(r => ({
+    name: r.node,
+    status: r.host ? 'online' : 'offline',
+    uptime: r.host?.uptime || 0,
+    cpu: r.host?.cpu || 0,
+    memory: r.host?.memory ? {
+      used: r.host.memory.used,
+      total: r.host.memory.total,
+      pct: Math.round((r.host.memory.used / r.host.memory.total) * 100),
+    } : null,
+    disk: r.host?.disk ? {
+      used: r.host.disk.used,
+      total: r.host.disk.total,
+      pct: Math.round((r.host.disk.used / r.host.disk.total) * 100),
+    } : null,
+    loadavg: r.host?.loadavg || [],
+  }))
+
+  const containers = nodeResults.flatMap(r =>
+    (r.containers || []).map((c: any) => ({ ...c, node: r.node }))
+  )
+
+  return { hosts, containers }
 }
 
 async function getNtfyData() {
