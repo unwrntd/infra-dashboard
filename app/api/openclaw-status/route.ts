@@ -1,35 +1,32 @@
 import { NextResponse } from 'next/server'
-import { execSync } from 'child_process'
 
 export async function GET() {
+  // Read roxieclaw status from Redis (cached by Baymax host)
+  let roxieclaw = { status: 'unknown' as string }
   try {
-    // Read roxieclaw status from Redis (cached by Baymax host)
-    const roxieRaw = execSync(
-      "redis-cli -h 10.0.3.12 -p 30637 -a 'js+VEk19D5QsCqVD08LMbhNtS14ki9xL' --no-auth-warning get baymax:openclaw:status",
-      { timeout: 5000 }
-    ).toString().trim()
-
-    let roxieclaw: Record<string, string> = { status: 'unknown' }
-    if (roxieRaw && roxieRaw !== '(nil)') {
-      try {
-        const parsed = JSON.parse(roxieRaw)
-        roxieclaw = parsed.roxieclaw || { status: 'unknown' }
-      } catch { /* parse failed */ }
+    const { createClient } = await import('@redis/client')
+    const client = createClient({
+      socket: { host: '10.0.3.12', port: 30637 },
+      password: 'js+VEk19D5QsCqVD08LMbhNtS14ki9xL',
+    })
+    await client.connect()
+    const raw = await client.get('baymax:openclaw:status')
+    await client.quit()
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      roxieclaw = (parsed as any).roxieclaw || { status: 'unknown' }
     }
+  } catch { /* redis failed */ }
 
-    // Baymax status — K8s pod CAN reach Baymax host at 10.0.3.107
-    let baymax: Record<string, string> = { status: 'unknown' }
-    try {
-      const bmOut = execSync(
-        "curl -sk --max-time 4 http://10.0.3.107:18789/health",
-        { timeout: 6000 }
-      ).toString().trim()
-      const bmParsed = JSON.parse(bmOut)
-      baymax = { status: bmParsed.ok ? 'up' : 'down', code: bmParsed.status || 'ok' }
-    } catch { /* baymax unreachable */ }
+  // Baymax status — K8s pod CAN reach Baymax host at 10.0.3.107
+  let baymax = { status: 'unknown' as string }
+  try {
+    const res = await fetch('http://10.0.3.107:18789/health', {
+      signal: AbortSignal.timeout(4000),
+    })
+    const data = await res.json()
+    baymax = { status: data.ok ? 'up' : 'down', code: data.status || 'ok' }
+  } catch { /* baymax unreachable */ }
 
-    return NextResponse.json({ baymax, roxieclaw })
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 })
-  }
+  return NextResponse.json({ baymax, roxieclaw })
 }
