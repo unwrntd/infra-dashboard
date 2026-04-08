@@ -4,65 +4,57 @@ import { useState, useEffect } from 'react'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
 import { Circle, CheckCircle2, XCircle } from 'lucide-react'
 
+// Map Title Case service name -> lowercase Redis key
+const NAME_TO_KEY: Record<string, string> = {
+  Plex: 'plex',
+  Sonarr: 'sonarr',
+  Radarr: 'radarr',
+  SABnzbd: 'sabnzbd',
+  qBittorrent: 'qbittorrent',
+  Overseerr: 'overseerr',
+  PlexPy: 'plexpy',
+  Bazarr: 'bazarr',
+  Prowlarr: 'prowlarr',
+  LiteLLM: 'litellm',
+  Ollama: 'ollama',
+  ChromaDB: 'chromadb',
+  Meilisearch: 'meilisearch',
+  Wallabag: 'wallabag',
+  n8n: 'n8n',
+  WikiJS: 'wikijs',
+  Gotenberg: 'gotenberg',
+  Speedtest: 'speedtest',
+}
+
 // simple-icons v9 export name mapping (si{TitleCase})
 const LOGO_KEYS: Record<string, string> = {
-  Plex: 'siPlex',
-  Sonarr: 'siSonarr',
-  Radarr: 'siRadarr',
-  SABnzbd: 'siSABnzbd',
-  qBittorrent: 'siQbittorrent',
-  Overseerr: 'siOverseerr',
-  PlexPy: 'siTautulli',
-  Bazarr: 'siBazarr',
-  Prowlarr: 'siProwlarr',
-  LiteLLM: 'siLiteLLM',
-  Ollama: 'siOllama',
-  ChromaDB: 'siChromadb',
-  Meilisearch: 'siMeilisearch',
-  Wallabag: 'siWallabag',
-  n8n: 'sin8n',
-  WikiJS: 'siWikiJS',
-  Gotenberg: 'siGotenberg',
-  Speedtest: 'siOokla',
+  Plex: 'siPlex', Sonarr: 'siSonarr', Radarr: 'siRadarr',
+  SABnzbd: 'siSABnzbd', qBittorrent: 'siQbittorrent', Overseerr: 'siOverseerr',
+  PlexPy: 'siTautulli', Bazarr: 'siBazarr', Prowlarr: 'siProwlarr',
+  LiteLLM: 'siLiteLLM', Ollama: 'siOllama', ChromaDB: 'siChromadb',
+  Meilisearch: 'siMeilisearch', Wallabag: 'siWallabag', n8n: 'sin8n',
+  WikiJS: 'siWikiJS', Gotenberg: 'siGotenberg', Speedtest: 'siOokla',
 }
 
-// Background colors per service (matches service branding)
 const LOGO_COLORS: Record<string, string> = {
-  Plex: '#E5A000',
-  Sonarr: '#52B2AB',
-  Radarr: '#EBA372',
-  SABnzbd: '#E5A000',
-  qBittorrent: '#02AC74',
-  Overseerr: '#5291CE',
-  PlexPy: '#02AC74',
-  Bazarr: '#B8C5D6',
-  Prowlarr: '#B8C5D6',
-  LiteLLM: '#4F46E5',
-  Ollama: '#E5A000',
-  ChromaDB: '#3F0E8C',
-  Meilisearch: '#FF5CAA',
-  Wallabag: '#D6A841',
-  n8n: '#EA4B71',
-  WikiJS: '#1E9EFF',
-  Gotenberg: '#8B5CF6',
-  Speedtest: '#00BBF5',
+  Plex: '#E5A000', Sonarr: '#52B2AB', Radarr: '#EBA372',
+  SABnzbd: '#E5A000', qBittorrent: '#02AC74', Overseerr: '#5291CE',
+  PlexPy: '#02AC74', Bazarr: '#B8C5D6', Prowlarr: '#B8C5D6',
+  LiteLLM: '#4F46E5', Ollama: '#E5A000', ChromaDB: '#3F0E8C',
+  Meilisearch: '#FF5CAA', Wallabag: '#D6A841', n8n: '#EA4B71',
+  WikiJS: '#1E9EFF', Gotenberg: '#8B5CF6', Speedtest: '#00BBF5',
 }
 
-// Cache for loaded simple-icons module
 let siModule: any = null
-
 async function getSi() {
   if (siModule) return siModule
-  try {
-    siModule = await import('simple-icons')
-  } catch { /* not available */ }
+  try { siModule = await import('simple-icons') } catch { /* skip */ }
   return siModule
 }
 
 function ServiceLogo({ name, size = 18 }: { name: string; size?: number }) {
   const [svg, setSvg] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
-  const [hex, setHex] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -72,10 +64,7 @@ function ServiceLogo({ name, size = 18 }: { name: string; size?: number }) {
       if (!key || !si) { setLoaded(true); return }
       try {
         const icon = (si as any)[key]
-        if (icon && icon.svg) {
-          setSvg(icon.svg)
-          setHex(icon.hex || null)
-        }
+        if (icon?.svg) setSvg(icon.svg)
       } catch { /* skip */ }
       setLoaded(true)
     })
@@ -85,74 +74,48 @@ function ServiceLogo({ name, size = 18 }: { name: string; size?: number }) {
   if (!loaded) return <div style={{ width: size, height: size }} className="flex-shrink-0" />
   if (!svg) return <Circle size={size} className="text-slate-500 flex-shrink-0" />
 
-  const bg = LOGO_COLORS[name] || hex || '#475569'
-
   return (
     <span
       dangerouslySetInnerHTML={{ __html: svg }}
       style={{
-        width: size,
-        height: size,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: bg,
-        borderRadius: 4,
-        flexShrink: 0,
+        width: size, height: size, display: 'inline-flex',
+        alignItems: 'center', justifyContent: 'center',
+        backgroundColor: LOGO_COLORS[name] || '#475569',
+        borderRadius: 4, flexShrink: 0,
       }}
     />
   )
 }
 
-interface ServiceState {
-  name: string
-  status: 'up' | 'down' | 'unknown'
-  latency?: number
-}
+interface ServiceStatus { [key: string]: { status: string; code: string } }
 
 interface MediaStats {
-  sonarr?: { total: number }
-  radarr?: { total: number }
+  sonarr?: { total: number }; radarr?: { total: number }
   sabnzbd?: { slots: number; bytes: string }
   qbittorrent?: { downloadSpeed: number }
 }
 
-async function checkService(ip: string, port: number, path: string): Promise<{ status: 'up' | 'down' | 'unknown'; latency?: number }> {
-  const start = Date.now()
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 4000)
-    const res = await fetch(`http://${ip}:${port}${path}`, {
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-    const latency = Date.now() - start
-    return { status: res.ok ? 'up' : 'down', latency }
-  } catch {
-    return { status: 'down' }
-  }
-}
-
 export default function ServiceCardGrid({ title, services }: { title: string; services: typeof DASHBOARD_CONFIG.mediaStack }) {
-  const [states, setStates] = useState<Record<string, ServiceState>>({})
+  const [health, setHealth] = useState<ServiceStatus>({})
   const [mediaStats, setMediaStats] = useState<MediaStats>({})
 
+  // Fetch service health from backend (Baymax → Redis cache)
   useEffect(() => {
-    async function checkAll() {
-      const results: Record<string, ServiceState> = {}
-      await Promise.all(
-        services.map(async (svc) => {
-          const result = await checkService(svc.ip, svc.port, svc.path)
-          results[svc.name] = { name: svc.name, ...result }
-        })
-      )
-      setStates(results)
+    async function fetchHealth() {
+      try {
+        const res = await fetch('/api/services')
+        if (res.ok) {
+          const data = await res.json()
+          setHealth(data.services || {})
+        }
+      } catch { /* silent */ }
     }
-    checkAll()
-    const interval = setInterval(checkAll, 30000)
+    fetchHealth()
+    const interval = setInterval(fetchHealth, 30000)
     return () => clearInterval(interval)
   }, [])
 
+  // Keep fetching media stats from dashboard API
   useEffect(() => {
     async function fetchMediaStats() {
       try {
@@ -165,7 +128,12 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
     return () => clearInterval(interval)
   }, [])
 
-  const upCount = Object.values(states).filter(s => s.status === 'up').length
+  function getStatus(name: string): 'up' | 'down' | 'unknown' {
+    const key = NAME_TO_KEY[name]
+    const h = health[key]
+    if (!h) return 'unknown'
+    return h.status === 'up' ? 'up' : 'down'
+  }
 
   function getQueueInfo(name: string): string | undefined {
     if (name === 'Sonarr' && mediaStats.sonarr?.total) return `${mediaStats.sonarr.total} queued`
@@ -181,15 +149,17 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
     return undefined
   }
 
+  const upCount = services.filter(s => getStatus(s.name) === 'up').length
+
   return (
     <div className="flex flex-col h-full bg-slate-800 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700 flex-shrink-0">
         <span className="text-xs font-semibold text-slate-300">{title}</span>
         <span className="text-[10px] text-emerald-400/70">{upCount}/{services.length} up</span>
       </div>
-      <div className="flex gap-1.5 p-1.5 overflow-x-auto flex-nowrap">
+      <div className="flex gap-1.5 p-1.5 overflow-x-auto flex-nowrap flex-1">
         {services.map((svc) => {
-          const state = states[svc.name]
+          const status = getStatus(svc.name)
           const queueInfo = getQueueInfo(svc.name)
           return (
             <a
@@ -201,9 +171,9 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
               className="flex flex-col items-start px-2 py-1.5 rounded bg-slate-700/50 hover:bg-slate-700 flex-shrink-0 min-w-[72px] transition-colors group"
             >
               <div className="flex items-center gap-1.5">
-                {state?.status === 'up' ? (
+                {status === 'up' ? (
                   <CheckCircle2 size={9} className="text-emerald-400 flex-shrink-0" />
-                ) : state?.status === 'down' ? (
+                ) : status === 'down' ? (
                   <XCircle size={9} className="text-red-400 flex-shrink-0" />
                 ) : (
                   <Circle size={9} className="text-slate-500 flex-shrink-0" />
