@@ -127,9 +127,10 @@ async function getProxmoxData() {
               used: statusData.data.memory.used || 0,
               total: statusData.data.memory.total || 0,
             } : null,
-            disk: statusData.data.disk ? {
-              used: statusData.data.disk.used || 0,
-              total: statusData.data.disk.total || 0,
+            disk: (statusData.data.rootfs && statusData.data.rootfs.total > 0) ? {
+              used: statusData.data.rootfs.used || 0,
+              total: statusData.data.rootfs.total || 0,
+              pct: Math.round((statusData.data.rootfs.used / statusData.data.rootfs.total) * 100),
             } : null,
             loadavg: statusData.data.loadavg || [],
           } : null,
