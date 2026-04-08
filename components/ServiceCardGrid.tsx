@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { Circle, CheckCircle2, XCircle } from 'lucide-react'
 
 // Map Title Case service name -> lowercase Redis key
 const NAME_TO_KEY: Record<string, string> = {
