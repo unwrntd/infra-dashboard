@@ -74,11 +74,10 @@ export default function CloudStatusGrid() {
       <div className="flex items-center justify-between px-3 py-1 bg-slate-900 border-b border-slate-700 flex-shrink-0">
         <span className="text-xs font-semibold text-slate-300">Cloud Services</span>
         <div className="flex items-center gap-2">
-          {data.updated && (
-            <span className="text-[9px] text-slate-500">
-              Updated {new Date(data.updated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' })} CT}
-            </span>
-          )}
+          {data.updated && (() => {
+            const t = new Date(data.updated!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' })
+            return <span className="text-[9px] text-slate-500">Updated {t} CT</span>
+          })()}
           <span className="text-[10px] text-emerald-400/70">{upCount}/{services.length} up</span>
         </div>
       </div>
