@@ -6,40 +6,32 @@ import { Circle, CheckCircle2, XCircle } from 'lucide-react'
 
 // Map Title Case service name -> lowercase Redis key
 const NAME_TO_KEY: Record<string, string> = {
-  Plex: 'plex',
-  Sonarr: 'sonarr',
-  Radarr: 'radarr',
-  SABnzbd: 'sabnzbd',
-  qBittorrent: 'qbittorrent',
-  Overseerr: 'overseerr',
-  PlexPy: 'plexpy',
-  Bazarr: 'bazarr',
-  Prowlarr: 'prowlarr',
-  LiteLLM: 'litellm',
-  Ollama: 'ollama',
-  ChromaDB: 'chromadb',
-  Meilisearch: 'meilisearch',
-  Wallabag: 'wallabag',
-  n8n: 'n8n',
-  WikiJS: 'wikijs',
-  Gotenberg: 'gotenberg',
-  Speedtest: 'speedtest',
+  Plex: 'plex', Sonarr: 'sonarr', Radarr: 'radarr',
+  Bazarr: 'bazarr', SABnzbd: 'sabnzbd', qBittorrent: 'qbittorrent',
+  Overseerr: 'overseerr', Tautulli: 'tautulli', Notifiarr: 'notifiarr',
+  PlexPy: 'plexpy', Prowlarr: 'prowlarr',
+  LiteLLM: 'litellm', Ollama: 'ollama', ChromaDB: 'chromadb', Meilisearch: 'meilisearch',
+  Wallabag: 'wallabag', n8n: 'n8n', WikiJS: 'wikijs', Gotenberg: 'gotenberg', Speedtest: 'speedtest',
+  Baymax: 'baymax', RoxieClaw: 'roxieclaw',
 }
 
 // simple-icons v9 export name mapping (si{TitleCase})
 const LOGO_KEYS: Record<string, string> = {
   Plex: 'siPlex', Sonarr: 'siSonarr', Radarr: 'siRadarr',
-  SABnzbd: 'siSABnzbd', qBittorrent: 'siQbittorrent', Overseerr: 'siOverseerr',
-  PlexPy: 'siTautulli', Bazarr: 'siBazarr', Prowlarr: 'siProwlarr',
+  Bazarr: 'siBazarr', SABnzbd: 'siSABnzbd', qBittorrent: 'siQbittorrent',
+  Overseerr: 'siOverseerr', Tautulli: 'siTautulli',
+  PlexPy: 'siTautulli', Prowlarr: 'siProwlarr',
   LiteLLM: 'siLiteLLM', Ollama: 'siOllama', ChromaDB: 'siChromadb',
   Meilisearch: 'siMeilisearch', Wallabag: 'siWallabag', n8n: 'sin8n',
   WikiJS: 'siWikiJS', Gotenberg: 'siGotenberg', Speedtest: 'siOokla',
+  Notifiarr: 'siNotifiarr',
 }
 
 const LOGO_COLORS: Record<string, string> = {
   Plex: '#E5A000', Sonarr: '#52B2AB', Radarr: '#EBA372',
-  SABnzbd: '#E5A000', qBittorrent: '#02AC74', Overseerr: '#5291CE',
-  PlexPy: '#02AC74', Bazarr: '#B8C5D6', Prowlarr: '#B8C5D6',
+  Bazarr: '#B8C5D6', SABnzbd: '#E5A000', qBittorrent: '#02AC74',
+  Overseerr: '#5291CE', Tautulli: '#02AC74', Notifiarr: '#5E60CE',
+  PlexPy: '#02AC74', Prowlarr: '#B8C5D6',
   LiteLLM: '#4F46E5', Ollama: '#E5A000', ChromaDB: '#3F0E8C',
   Meilisearch: '#FF5CAA', Wallabag: '#D6A841', n8n: '#EA4B71',
   WikiJS: '#1E9EFF', Gotenberg: '#8B5CF6', Speedtest: '#00BBF5',
@@ -167,6 +159,7 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
               href={`http://${svc.ip}:${svc.port}`}
               target="_blank"
               rel="noopener noreferrer"
+              href={svc.ip.includes('.') ? `https://${svc.ip}` : `http://${svc.ip}:${svc.port}`}
               title={`${svc.name} — ${svc.ip}:${svc.port}`}
               className="flex flex-col items-start px-2 py-1.5 rounded bg-slate-700/50 hover:bg-slate-700 flex-shrink-0 min-w-[72px] transition-colors group"
             >

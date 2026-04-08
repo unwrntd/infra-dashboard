@@ -65,12 +65,19 @@ export const DASHBOARD_CONFIG = {
 
   // Media stack services
   mediaStack: [
+    // Media server
     { name: 'Plex', ip: '10.0.2.20', port: 32400, path: '/api/health' },
+    // ARR stack
     { name: 'Sonarr', ip: '10.0.3.137', port: 8989, path: '/api/health' },
     { name: 'Radarr', ip: '10.0.3.144', port: 7878, path: '/api/health' },
+    { name: 'Bazarr', ip: 'bazarr.safdia.com', port: 443, path: '/api/health' },
+    { name: 'Tautulli', ip: 'tautulli.safdia.com', port: 443, path: '/api/health' },
+    { name: 'Notifiarr', ip: 'notifiarr.safdia.com', port: 443, path: '/api/health' },
+    // Downloaders
     { name: 'SABnzbd', ip: '10.0.3.101', port: 7777, path: '/sabnzbd/api?mode=queue' },
     { name: 'qBittorrent', ip: '10.0.3.146', port: 8090, path: '/api/v2/app/preferences' },
-    { name: 'Overseerr', ip: '10.0.3.162', port: 5055, path: '/api/v1/status' },
+    // Request management
+    { name: 'Overseerr', ip: 'overseerr.safdia.com', port: 443, path: '/api/v1/status' },
   ],
 
   // AI stack services
