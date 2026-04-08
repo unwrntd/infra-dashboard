@@ -1,124 +1,73 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Box, Cpu, MemoryStick, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Box, Circle } from 'lucide-react'
 
-interface K8sNode {
-  name: string
-  status: string
-  cpu?: number
-  memoryUsage?: number
-  podCount?: number
-  conditions?: { type: string; status: string }[]
-}
+type Status = 'up' | 'down' | 'warning'
 
-interface K8sPod {
+interface AppStatus {
   name: string
   namespace: string
-  status: string
-  restarts: number
-  age: string
-  node: string
+  status: Status
+  reason?: string
 }
 
-function getAge(timestamp: string): string {
-  const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
-  return `${Math.floor(seconds / 86400)}d`
-}
-
-function NodeCard({ node }: { node: K8sNode }) {
-  const conditionReady = node.conditions?.find(c => c.type === 'Ready')?.status === 'True'
-  const isHealthy = conditionReady && node.status === 'Ready'
-
-  return (
-    <div className={`flex flex-col p-1.5 rounded border text-[10px] ${isHealthy ? 'border-emerald-700/50 bg-emerald-900/10' : 'border-red-700/50 bg-red-900/10'}`}>
-      <div className="flex items-center justify-between mb-0.5">
-        <span className="font-semibold text-white">{node.name}</span>
-        {isHealthy ? (
-          <CheckCircle2 size={10} className="text-emerald-400" />
-        ) : (
-          <AlertCircle size={10} className="text-red-400" />
-        )}
-      </div>
-      <div className="flex items-center gap-2 text-slate-400">
-        <span className="flex items-center gap-0.5">
-          <Cpu size={9} />{node.cpu ? `${node.cpu.toFixed(0)}%` : '-'}
-        </span>
-        <span className="flex items-center gap-0.5">
-          <MemoryStick size={9} />{node.memoryUsage ? `${node.memoryUsage}%` : '-'}
-        </span>
-        <span className="flex items-center gap-0.5">
-          <Box size={9} />{node.podCount || '-'}
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function PodRow({ pod, compact = false }: { pod: K8sPod; compact?: boolean }) {
-  const isCrash = pod.status === 'CrashLoopBackOff' || pod.status === 'Error'
-  const isPending = pod.status === 'Pending' || pod.status === 'ContainerCreating'
-  const dotColor = isCrash ? 'bg-red-400' : isPending ? 'bg-yellow-400' : 'bg-emerald-400'
-
-  return (
-    <div className={`flex items-center gap-1.5 px-1.5 py-0.5 text-[10px] ${isCrash ? 'text-red-400' : isPending ? 'text-yellow-400' : 'text-slate-300'} ${compact ? '' : 'border-b border-slate-700/30'}`}>
-      <span className={`w-1 h-1 rounded-full flex-shrink-0 ${dotColor}`} />
-      <span className="text-slate-500 w-20 truncate flex-shrink-0">{pod.namespace}</span>
-      <span className="flex-1 truncate">{pod.name}</span>
-      {pod.restarts > 0 && (
-        <span className="text-red-400 flex-shrink-0">{pod.restarts}↺</span>
-      )}
-      <span className="text-slate-500 flex-shrink-0 w-12 text-right">{pod.age}</span>
-    </div>
-  )
+function StatusDot({ status }: { status: Status }) {
+  const colors = {
+    up: 'bg-emerald-400',
+    warning: 'bg-yellow-400',
+    down: 'bg-red-400',
+  }
+  return <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors[status]}`} />
 }
 
 export default function K8sStatus() {
-  const [nodes, setNodes] = useState<K8sNode[]>([])
-  const [pods, setPods] = useState<K8sPod[]>([])
+  const [apps, setApps] = useState<AppStatus[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'problem'>('all')
 
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch('/api/infrastructure')
-        if (res.ok) {
-          const data = await res.json()
-          console.log('[K8s] Received:', data.k8sNodes?.length, 'nodes,', data.k8sPods?.length, 'pods, namespaces:', [...new Set((data.k8sPods||[]).map((p:any)=>p.namespace))])
+        if (!res.ok) return
+        const data = await res.json()
+        const pods: any[] = data.k8sPods || []
 
-          if (data.k8sNodes && Array.isArray(data.k8sNodes)) {
-            const parsedNodes: K8sNode[] = data.k8sNodes.map((n: any) => ({
-              name: n.name || n.metadata?.name || 'unknown',
-              status: n.status || (n.metadata?.name ? 'Ready' : 'Unknown'),
-              cpu: n.cpu || 0,
-              memoryUsage: n.memoryUsage,
-              podCount: n.podCount || 0,
-              conditions: n.conditions || [],
-            }))
-            setNodes(parsedNodes)
-            console.log('[K8s] Set nodes:', parsedNodes.length)
-            console.log('[K8s] node names:', parsedNodes.map((n: K8sNode) => n.name).join(', '))
-          }
+        // Group pods by namespace
+        const nsMap = new Map<string, any[]>()
+        pods.forEach(p => {
+          const ns = p.namespace || p.metadata?.namespace || 'default'
+          if (!nsMap.has(ns)) nsMap.set(ns, [])
+          nsMap.get(ns)!.push(p)
+        })
 
-          if (data.k8sPods && Array.isArray(data.k8sPods)) {
-            const parsedPods: K8sPod[] = data.k8sPods.map((p: any) => ({
-              name: p.name || p.metadata?.name || 'unknown',
-              namespace: p.namespace || p.metadata?.namespace || 'default',
-              status: p.status || 'Unknown',
-              restarts: typeof p.restarts === 'number' ? p.restarts : 0,
-              age: p.age || '-',
-              node: p.node || p.spec?.nodeName || '-',
-            }))
-            setPods(parsedPods)
-            console.log('[K8s] Set pods:', parsedPods.length, 'namespaces:', [...new Set(parsedPods.map(p=>p.namespace))])
-          }
-        } else {
-          console.error('[K8s] HTTP error:', res.status)
-        }
+        // Determine status per namespace
+        const appStatuses: AppStatus[] = []
+        nsMap.forEach((nsPods, ns) => {
+          const hasCrash = nsPods.some(p =>
+            p.status === 'CrashLoopBackOff' || p.status === 'Error' || p.status === 'Terminated'
+          )
+          const hasPending = nsPods.some(p =>
+            p.status === 'Pending' || p.status === 'ContainerCreating' || p.status === 'Terminating'
+          )
+          const hasRestarting = nsPods.some(p => (p.restarts || 0) > 5)
+
+          let status: Status = 'up'
+          if (hasCrash || hasPending) status = 'down'
+          else if (hasRestarting) status = 'warning'
+
+          appStatuses.push({
+            name: ns,
+            namespace: ns,
+            status,
+            reason: hasCrash ? 'Crashed' : hasPending ? 'Pending' : hasRestarting ? 'Restarts' : undefined,
+          })
+        })
+
+        setApps(appStatuses.sort((a, b) => {
+          const order = { down: 0, warning: 1, up: 2 }
+          return order[a.status] - order[b.status]
+        }))
       } catch (e) {
         console.error('K8s fetch error:', e)
       } finally {
@@ -130,69 +79,47 @@ export default function K8sStatus() {
     return () => clearInterval(interval)
   }, [])
 
-  const namespaces = [...new Set(pods.map(p => p.namespace))]
-  const problemPods = pods.filter(p => p.status === 'CrashLoopBackOff' || p.status === 'Error' || p.status === 'Pending' || p.status === 'ContainerCreating')
-  const filteredPods = filter === 'problem' ? problemPods : pods
-
-  console.log('[K8s] filter:', filter, '| totalPods:', pods.length, '| namespaces:', namespaces.length, '| filteredPods:', filteredPods.length)
+  const counts = {
+    up: apps.filter(a => a.status === 'up').length,
+    warning: apps.filter(a => a.status === 'warning').length,
+    down: apps.filter(a => a.status === 'down').length,
+  }
 
   return (
-    <div className="flex flex-col bg-slate-800 rounded-lg overflow-hidden border border-slate-700 h-full">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700">
+    <div className="flex flex-col h-full bg-slate-800 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-700 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Box size={14} className="text-cyan-400" />
-          <span className="text-sm font-semibold text-white">Kubernetes</span>
-          <span className="text-xs text-slate-400">{nodes.length} nodes · {pods.length} pods · {namespaces.length} ns</span>
+          <Box size={12} className="text-cyan-400" />
+          <span className="text-xs font-semibold text-white">K8s Apps</span>
         </div>
-        <div className="flex items-center gap-2">
-          {problemPods.length > 0 && (
-            <span className="text-xs text-red-400">{problemPods.length} issues</span>
-          )}
-          <div className="flex gap-1">
-            {['all', 'problem'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f as typeof filter)}
-                className={`px-1.5 py-0.5 text-[10px] rounded ${filter === f ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:bg-slate-700'}`}
+        <div className="flex items-center gap-2 text-[10px]">
+          <span className="text-emerald-400">{counts.up} up</span>
+          {counts.warning > 0 && <span className="text-yellow-400">{counts.warning} warn</span>}
+          {counts.down > 0 && <span className="text-red-400">{counts.down} down</span>}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto p-1.5">
+        {loading ? (
+          <div className="text-xs text-slate-400 p-2">Loading...</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1">
+            {apps.map(app => (
+              <div
+                key={app.name}
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-700/40 hover:bg-slate-700 transition-colors"
+                title={app.reason ? `${app.name}: ${app.reason}` : app.name}
               >
-                {f}
-              </button>
+                <StatusDot status={app.status} />
+                <span className={`text-[11px] truncate ${
+                  app.status === 'down' ? 'text-red-300' :
+                  app.status === 'warning' ? 'text-yellow-300' : 'text-slate-300'
+                }`}>
+                  {app.name}
+                </span>
+              </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Nodes row */}
-      <div className="grid grid-cols-4 gap-1 p-1.5 border-b border-slate-700">
-        {loading ? (
-          <div className="col-span-4 text-xs text-slate-400 p-1">Loading...</div>
-        ) : (
-          nodes.map(n => <NodeCard key={n.name} node={n} />)
-        )}
-      </div>
-
-      {/* Pods — scrollable, all namespaces */}
-      <div className="flex-1 overflow-auto">
-        {loading ? (
-          <div className="text-xs text-slate-400 p-2">Loading pods...</div>
-        ) : filteredPods.length === 0 ? (
-          <div className="text-xs text-slate-500 p-2">No pods to show</div>
-        ) : (
-          <>
-            {/* Namespace group headers */}
-            {namespaces.filter(ns => filter === 'all' || problemPods.some(p => p.namespace === ns)).map(ns => {
-              const nsPods = filteredPods.filter(p => p.namespace === ns)
-              if (nsPods.length === 0) return null
-              return (
-                <div key={ns}>
-                  <div className="sticky top-0 bg-slate-800 px-1.5 py-0.5 text-[9px] text-slate-500 font-medium border-b border-slate-700/50">
-                    {ns} ({nsPods.length})
-                  </div>
-                  {nsPods.map((p, i) => <PodRow key={`${p.namespace}-${p.name}-${i}`} pod={p} compact />)}
-                </div>
-              )
-            })}
-          </>
         )}
       </div>
     </div>
