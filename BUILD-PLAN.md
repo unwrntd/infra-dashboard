@@ -160,3 +160,4 @@ Change workflow `runs-on` back to `ubuntu-latest`, push, wait 15-20 min.
 - LXC 205 auto-deploy cron: `/opt/autodeploy.sh` — runs every minute, builds from GitHub
 - GitHub runner on MacBook: registered, online, waiting for jobs
 - Build-LXC runner (LXC 205): online, but builds x64 only
+# test Wed Apr  8 11:30:00 UTC 2026
