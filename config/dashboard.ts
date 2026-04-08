@@ -79,7 +79,7 @@ export const DASHBOARD_CONFIG = {
     { name: 'Ollama', ip: '10.0.3.132', port: 9876, path: '/api/tags' },
     { name: 'ChromaDB', ip: '10.0.3.11', port: 30800, path: '/api/v1/heartbeat' },
     { name: 'Meilisearch', ip: '10.0.3.11', port: 30770, path: '/health' },
-    { name: 'OpenWebUI', ip: '10.0.3.187', port: 8080, path: '/api/tags' },
+
   ],
 
   // Refresh intervals (ms)
