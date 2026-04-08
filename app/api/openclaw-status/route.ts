@@ -19,13 +19,13 @@ export async function GET() {
   } catch { /* redis failed */ }
 
   // Baymax status — K8s pod CAN reach Baymax host at 10.0.3.107
-  let baymax = { status: 'unknown' as string }
+  let baymax = { status: 'unknown', code: '' }
   try {
     const res = await fetch('http://10.0.3.107:18789/health', {
       signal: AbortSignal.timeout(4000),
     })
-    const data = await res.json()
-    baymax = { status: data.ok ? 'up' : 'down', code: data.status || 'ok' }
+    const data = await res.json() as { ok: boolean; status: string }
+    baymax = { status: data.ok ? 'up' : 'down', code: data.status }
   } catch { /* baymax unreachable */ }
 
   return NextResponse.json({ baymax, roxieclaw })
