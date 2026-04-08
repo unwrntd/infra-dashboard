@@ -40,15 +40,15 @@ async function getServiceHealth(ip: string, port: number, path: string) {
 }
 
 export async function GET() {
-  const [ollama, litellm] = await Promise.all([getOllamaModels(), getLiteLLMHealth()])
-  const [chroma, meili, openwebui] = await Promise.all([
-    getServiceHealth('10.0.3.11', 30800, '/api/v1/heartbeat'),
-    getServiceHealth('10.0.3.11', 30770, '/health'),
-    getServiceHealth('10.0.3.187', 8080, '/api/tags'),
+  const [ollama, litellm, chroma, meili] = await Promise.all([
+    getOllamaModels(),
+    getLiteLLMHealth(),
+    getServiceHealth('10.0.3.12', 30800, '/api/v2/heartbeat'),
+    getServiceHealth('10.0.3.12', 30770, '/health'),
   ])
   return NextResponse.json({
     ollama,
     litellm,
-    services: { chromadb: chroma, meilisearch: meili, openwebui: openwebui },
+    services: { chromadb: chroma, meilisearch: meili },
   })
 }
