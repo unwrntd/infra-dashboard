@@ -3,37 +3,32 @@ import { execSync } from 'child_process'
 
 export async function GET() {
   try {
-    // Read from Redis (cached by Baymax host via check-services.sh)
-    const output = execSync(
+    // Read roxieclaw status from Redis (cached by Baymax host)
+    const roxieRaw = execSync(
       "redis-cli -h 10.0.3.12 -p 30637 -a 'js+VEk19D5QsCqVD08LMbhNtS14ki9xL' --no-auth-warning get baymax:openclaw:status",
       { timeout: 5000 }
     ).toString().trim()
 
-    if (!output || output === '(nil)') {
-      // Fallback: check baymax directly (K8s pod can reach Baymax host)
+    let roxieclaw = { status: 'unknown' as string }
+    if (roxieRaw && roxieRaw !== '(nil)') {
       try {
-        const baymaxOut = execSync(
-          "curl -sk --max-time 4 http://10.0.3.107:18789/health",
-          { timeout: 6000 }
-        ).toString().trim()
-        const baymaxParsed = JSON.parse(baymaxOut)
-        return NextResponse.json({
-          baymax: { status: baymaxParsed.ok ? 'up' : 'down', code: baymaxParsed.status },
-          roxieclaw: { status: 'unknown', code: 'no_cache' },
-        })
-      } catch {
-        return NextResponse.json({
-          baymax: { status: 'down' },
-          roxieclaw: { status: 'unknown' },
-        }, { status: 503 })
-      }
+        const parsed = JSON.parse(roxieRaw)
+        roxieclaw = parsed.roxieclaw || { status: 'unknown' }
+      } catch { /* parse failed */ }
     }
 
-    const parsed = JSON.parse(output)
-    return NextResponse.json({
-      baymax: parsed.baymax || { status: 'unknown' },
-      roxieclaw: parsed.roxieclaw || { status: 'unknown' },
-    })
+    // Baymax status — K8s pod CAN reach Baymax host at 10.0.3.107
+    let baymax = { status: 'unknown' as string }
+    try {
+      const bmOut = execSync(
+        "curl -sk --max-time 4 http://10.0.3.107:18789/health",
+        { timeout: 6000 }
+      ).toString().trim()
+      const bmParsed = JSON.parse(bmOut)
+      baymax = { status: bmParsed.ok ? 'up' : 'down', code: bmParsed.status }
+    } catch { /* baymax unreachable */ }
+
+    return NextResponse.json({ baymax, roxieclaw })
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 })
   }
