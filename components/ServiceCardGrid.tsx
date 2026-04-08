@@ -156,10 +156,9 @@ export default function ServiceCardGrid({ title, services }: { title: string; se
           return (
             <a
               key={svc.name}
-              href={`http://${svc.ip}:${svc.port}`}
               target="_blank"
               rel="noopener noreferrer"
-              href={svc.ip.includes('.') ? `https://${svc.ip}` : `http://${svc.ip}:${svc.port}`}
+              href={svc.ip.includes('.') && !svc.ip.match(/^\d+\.\d+\.\d+\.\d+$/) ? `https://${svc.ip}` : `http://${svc.ip}:${svc.port}`}
               title={`${svc.name} — ${svc.ip}:${svc.port}`}
               className="flex flex-col items-start px-2 py-1.5 rounded bg-slate-700/50 hover:bg-slate-700 flex-shrink-0 min-w-[72px] transition-colors group"
             >
