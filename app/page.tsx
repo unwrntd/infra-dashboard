@@ -11,7 +11,6 @@ import ProxmoxGrid from '@/components/ProxmoxGrid'
 import K8sStatus from '@/components/K8sStatus'
 import ServiceCardGrid from '@/components/ServiceCardGrid'
 import AIStatus from '@/components/AIStatus'
-import OpenClawStatus from '@/components/OpenClawStatus'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
 import 'react-grid-layout/css/styles.css'
@@ -161,16 +160,6 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 overflow-auto">
               <Panel><AIStatus /></Panel>
-            </div>
-          </div>
-
-          <div key="openclaw" className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden flex flex-col">
-            <div className="drag-handle px-3 py-2 bg-slate-900 border-b border-slate-700 cursor-move flex items-center gap-2">
-              <span className="text-xs text-slate-400">⋮⋮</span>
-              <span className="text-xs font-semibold text-white">OpenClaw</span>
-            </div>
-            <div className="flex-1 overflow-auto">
-              <Panel><OpenClawStatus /></Panel>
             </div>
           </div>
         </ResponsiveGridLayout>

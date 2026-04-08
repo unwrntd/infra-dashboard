@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Cpu, Circle } from 'lucide-react'
+import { Cpu, Circle, Bot, CheckCircle2, XCircle } from 'lucide-react'
 
 interface OllamaModel {
   name: string
@@ -23,18 +23,29 @@ function ModelPill({ name, size }: { name: string; size: number }) {
   )
 }
 
+function StatusDot({ status }: { status: string }) {
+  if (status === 'up') return <CheckCircle2 size={10} className="text-emerald-400" />
+  if (status === 'down') return <XCircle size={10} className="text-red-400" />
+  return <Circle size={10} className="text-slate-500" />
+}
+
 export default function AIStatus() {
   const [data, setData] = useState<{
     ollama: { loaded: OllamaModel[] }
     litellm: { status: string; models?: string[] }
     services: Record<string, string>
   } | null>(null)
+  const [openclaw, setOpenclaw] = useState<Record<string, { status: string }>>({})
 
   useEffect(() => {
     async function fetchAI() {
       try {
-        const res = await fetch('/api/ai')
-        if (res.ok) setData(await res.json())
+        const [aiRes, ocRes] = await Promise.all([
+          fetch('/api/ai'),
+          fetch('/api/openclaw-status'),
+        ])
+        if (aiRes.ok) setData(await aiRes.json())
+        if (ocRes.ok) setOpenclaw(await ocRes.json())
       } catch { /* silent */ }
     }
     fetchAI()
@@ -54,6 +65,28 @@ export default function AIStatus() {
 
   return (
     <div className="flex flex-col gap-3 p-3 overflow-auto">
+      {/* OpenClaw Instances */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Bot size={11} className="text-violet-400" />
+          <span className="text-[11px] font-semibold text-slate-300">OpenClaw</span>
+        </div>
+        <div className="flex gap-2">
+          {['baymax', 'roxieclaw'].map(inst => {
+            const ocData = openclaw[inst]
+            const status = ocData?.status || 'unknown'
+            return (
+              <div key={inst} className="flex items-center gap-1.5 px-2 py-1 bg-slate-700/40 rounded">
+                <StatusDot status={status} />
+                <span className={`text-[10px] ${status === 'down' ? 'text-red-300' : 'text-slate-300'}`}>
+                  {inst === 'baymax' ? 'Baymax' : 'RoxieClaw'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Ollama */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
@@ -93,7 +126,7 @@ export default function AIStatus() {
         )}
       </div>
 
-      {/* Other services */}
+      {/* Other AI/Knowledge services */}
       <div className="grid grid-cols-3 gap-1">
         {Object.entries(services).map(([name, status]) => (
           <div key={name} className="flex items-center gap-1">

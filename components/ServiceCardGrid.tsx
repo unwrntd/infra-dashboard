@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
-import { Circle, CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 // Map Title Case service name -> lowercase Redis key
 const NAME_TO_KEY: Record<string, string> = {
@@ -15,18 +15,6 @@ const NAME_TO_KEY: Record<string, string> = {
   Baymax: 'baymax', RoxieClaw: 'roxieclaw',
 }
 
-// simple-icons v9 export name mapping (si{TitleCase})
-const LOGO_KEYS: Record<string, string> = {
-  Plex: 'siPlex', Sonarr: 'siSonarr', Radarr: 'siRadarr',
-  Bazarr: 'siBazarr', SABnzbd: 'siSABnzbd', qBittorrent: 'siQbittorrent',
-  Overseerr: 'siOverseerr', Tautulli: 'siTautulli',
-  PlexPy: 'siTautulli', Prowlarr: 'siProwlarr',
-  LiteLLM: 'siLiteLLM', Ollama: 'siOllama', ChromaDB: 'siChromadb',
-  Meilisearch: 'siMeilisearch', Wallabag: 'siWallabag', n8n: 'sin8n',
-  WikiJS: 'siWikiJS', Gotenberg: 'siGotenberg', Speedtest: 'siOokla',
-  Notifiarr: 'siNotifiarr',
-}
-
 const LOGO_COLORS: Record<string, string> = {
   Plex: '#E5A000', Sonarr: '#52B2AB', Radarr: '#EBA372',
   Bazarr: '#B8C5D6', SABnzbd: '#E5A000', qBittorrent: '#02AC74',
@@ -37,45 +25,24 @@ const LOGO_COLORS: Record<string, string> = {
   WikiJS: '#1E9EFF', Gotenberg: '#8B5CF6', Speedtest: '#00BBF5',
 }
 
-let siModule: any = null
-async function getSi() {
-  if (siModule) return siModule
-  try { siModule = await import('simple-icons') } catch { /* skip */ }
-  return siModule
-}
-
-function ServiceLogo({ name, size = 18 }: { name: string; size?: number }) {
-  const [svg, setSvg] = useState<string | null>(null)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    getSi().then(si => {
-      if (cancelled) return
-      const key = LOGO_KEYS[name]
-      if (!key || !si) { setLoaded(true); return }
-      try {
-        const icon = (si as any)[key]
-        if (icon?.svg) setSvg(icon.svg)
-      } catch { /* skip */ }
-      setLoaded(true)
-    })
-    return () => { cancelled = true }
-  }, [name])
-
-  if (!loaded) return <div style={{ width: size, height: size }} className="flex-shrink-0" />
-  if (!svg) return <Circle size={size} className="text-slate-500 flex-shrink-0" />
-
+// Letter badge — reliable, no icon library dependency
+function ServiceLogo({ name, size = 14 }: { name: string; size?: number }) {
+  const color = LOGO_COLORS[name] || '#475569'
+  const initial = name.charAt(0).toUpperCase()
+  const fontSize = Math.round(size * 0.65)
   return (
-    <span
-      dangerouslySetInnerHTML={{ __html: svg }}
+    <div
+      className="flex-shrink-0 rounded flex items-center justify-center font-bold"
       style={{
-        width: size, height: size, display: 'inline-flex',
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: LOGO_COLORS[name] || '#475569',
-        borderRadius: 4, flexShrink: 0,
+        width: size, height: size,
+        backgroundColor: color,
+        fontSize,
+        color: 'rgba(255,255,255,0.9)',
+        flexShrink: 0,
       }}
-    />
+    >
+      {initial}
+    </div>
   )
 }
 
