@@ -10,6 +10,7 @@ import CloudStatusGrid from '@/components/CloudStatusGrid'
 import ProxmoxGrid from '@/components/ProxmoxGrid'
 import K8sStatus from '@/components/K8sStatus'
 import ServiceCardGrid from '@/components/ServiceCardGrid'
+import AIStatus from '@/components/AIStatus'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
 import 'react-grid-layout/css/styles.css'
@@ -158,7 +159,7 @@ export default function Dashboard() {
               <span className="text-xs font-semibold text-white">AI Stack</span>
             </div>
             <div className="flex-1 overflow-auto">
-              <Panel><ServiceCardGrid title="AI Stack" services={DASHBOARD_CONFIG.aiStack} /></Panel>
+              <Panel><AIStatus /></Panel>
             </div>
           </div>
         </ResponsiveGridLayout>
