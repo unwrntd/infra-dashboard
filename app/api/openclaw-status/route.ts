@@ -9,7 +9,7 @@ export async function GET() {
       { timeout: 5000 }
     ).toString().trim()
 
-    let roxieclaw = { status: 'unknown' as string }
+    let roxieclaw: Record<string, string> = { status: 'unknown' }
     if (roxieRaw && roxieRaw !== '(nil)') {
       try {
         const parsed = JSON.parse(roxieRaw)
@@ -18,14 +18,14 @@ export async function GET() {
     }
 
     // Baymax status — K8s pod CAN reach Baymax host at 10.0.3.107
-    let baymax = { status: 'unknown' as string }
+    let baymax: Record<string, string> = { status: 'unknown' }
     try {
       const bmOut = execSync(
         "curl -sk --max-time 4 http://10.0.3.107:18789/health",
         { timeout: 6000 }
       ).toString().trim()
       const bmParsed = JSON.parse(bmOut)
-      baymax = { status: bmParsed.ok ? 'up' : 'down', code: bmParsed.status }
+      baymax = { status: bmParsed.ok ? 'up' : 'down', code: bmParsed.status || 'ok' }
     } catch { /* baymax unreachable */ }
 
     return NextResponse.json({ baymax, roxieclaw })
