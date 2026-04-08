@@ -2,42 +2,47 @@ import { NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 
 export async function GET() {
-  const results: Record<string, { status: string; latency?: number; code?: string }> = {}
-
-  // Check Baymax (local)
   try {
-    const start = Date.now()
+    // Read OpenClaw status from Redis (cached by Baymax host via check-services.sh)
     const output = execSync(
-      'curl -sk --max-time 4 http://127.0.0.1:18789/health',
-      { timeout: 6000 }
+      "redis-cli -h 10.0.3.12 -p 30637 -a 'js+VEk19D5QsCqVD08LMbhNtS14ki9xL' --no-auth-warning get baymax:openclaw:status",
+      { timeout: 5000 }
     ).toString().trim()
-    const parsed = JSON.parse(output)
-    results['baymax'] = {
-      status: parsed.ok ? 'up' : 'down',
-      latency: Date.now() - start,
-      code: parsed.status || 'ok',
-    }
-  } catch {
-    results['baymax'] = { status: 'down', code: 'error' }
-  }
 
-  // Check RoxieClaw (192.168.98.116)
-  try {
-    const start = Date.now()
-    const output = execSync(
-      'curl -sk --max-time 4 https://192.168.98.116/health',
-      { timeout: 6000 }
-    ).toString().trim()
-    const parsed = JSON.parse(output)
-    results['roxieclaw'] = {
-      status: parsed.ok ? 'up' : 'down',
-      latency: Date.now() - start,
-      code: parsed.status || 'ok',
+    if (!output || output === '(nil)') {
+      // Fallback: check baymax directly (this works from K8s pod)
+      try {
+        const baymaxOut = execSync(
+          "curl -sk --max-time 4 http://10.0.3.107:18789/health",
+          { timeout: 6000 }
+        ).toString().trim()
+        const baymaxParsed = JSON.parse(baymaxOut)
+        return NextResponse.json({
+          baymax: { status: baymaxParsed.ok ? 'up' : 'down', code: baymaxParsed.status },
+          roxieclaw: { status: 'unknown', code: 'no_cache' },
+        })
+      } catch {
+        return NextResponse.json({ error: 'baymax unreachable', baymax: { status: 'down' }, roxieclaw: { status: 'unknown' } }, { status: 503 })
+      }
     }
-  } catch (e: any) {
-    const code = e.status || 'error'
-    results['roxieclaw'] = { status: 'down', code: String(code) }
-  }
 
-  return NextResponse.json(results)
+    const parsed = JSON.parse(output)
+    // Baymax status comes from Redis cache key, or fallback to direct check
+    let baymaxStatus = parsed.baymax
+    if (!baymaxStatus) {
+      try {
+        const bm = execSync("curl -sk --max-time 4 http://10.0.3.107:18789/health", { timeout: 6000 }).toString().trim()
+        baymaxStatus = { status: JSON.parse(bm).ok ? 'up' : 'down' }
+      } catch {
+        baymaxStatus = { status: 'down' }
+      }
+    }
+
+    return NextResponse.json({
+      baymax: baymaxStatus,
+      roxieclaw: parsed.roxieclaw || { status: 'unknown' },
+    })
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 })
+  }
 }
