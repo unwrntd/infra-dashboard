@@ -33,7 +33,7 @@ export default function OpenClawStatus() {
 
   const INSTANCES = [
     { key: 'baymax', label: 'Baymax', desc: 'Primary assistant' },
-    { key: 'roxieclaw', label: 'RoxieClaw', desc: \"Roxie's assistant\" },
+    { key: 'roxieclaw', label: 'RoxieClaw', desc: "Roxie's assistant" },
   ]
 
   return (
