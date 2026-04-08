@@ -4,59 +4,77 @@ import { useState, useEffect } from 'react'
 import { DASHBOARD_CONFIG } from '@/config/dashboard'
 import { Circle, CheckCircle2, XCircle } from 'lucide-react'
 
-// simple-icons slug mapping for services
-const LOGO_SLUGS: Record<string, string> = {
-  Plex: 'plex',
-  Sonarr: 'sonarr',
-  Radarr: 'radarr',
-  SABnzbd: 'sabnzbd',
-  qBittorrent: 'qbittorrent',
-  Overseerr: 'overseerr',
-  PlexPy: 'tautulli',
-  Bazarr: 'bazarr',
-  Prowlarr: 'prowlarr',
-  LiteLLM: 'litellm',
-  Ollama: 'ollama',
-  ChromaDB: 'chromadb',
-  'OpenWebUI': 'openwebui',
-  Meilisearch: 'meilisearch',
-  'Wallabag': 'wallabag',
-  n8n: 'n8n',
-  WikiJS: 'wikijs',
-  Gotenberg: 'gotenberg',
-  Speedtest: 'ookla',
+// simple-icons v9 export name mapping (si{TitleCase})
+const LOGO_KEYS: Record<string, string> = {
+  Plex: 'siPlex',
+  Sonarr: 'siSonarr',
+  Radarr: 'siRadarr',
+  SABnzbd: 'siSABnzbd',
+  qBittorrent: 'siQbittorrent',
+  Overseerr: 'siOverseerr',
+  PlexPy: 'siTautulli',
+  Bazarr: 'siBazarr',
+  Prowlarr: 'siProwlarr',
+  LiteLLM: 'siLiteLLM',
+  Ollama: 'siOllama',
+  ChromaDB: 'siChromadb',
+  Meilisearch: 'siMeilisearch',
+  Wallabag: 'siWallabag',
+  n8n: 'sin8n',
+  WikiJS: 'siWikiJS',
+  Gotenberg: 'siGotenberg',
+  Speedtest: 'siOokla',
 }
 
-// Cache for loaded icons
-let siCache: Record<string, any> = {}
+// Background colors per service (matches service branding)
+const LOGO_COLORS: Record<string, string> = {
+  Plex: '#E5A000',
+  Sonarr: '#52B2AB',
+  Radarr: '#EBA372',
+  SABnzbd: '#E5A000',
+  qBittorrent: '#02AC74',
+  Overseerr: '#5291CE',
+  PlexPy: '#02AC74',
+  Bazarr: '#B8C5D6',
+  Prowlarr: '#B8C5D6',
+  LiteLLM: '#4F46E5',
+  Ollama: '#E5A000',
+  ChromaDB: '#3F0E8C',
+  Meilisearch: '#FF5CAA',
+  Wallabag: '#D6A841',
+  n8n: '#EA4B71',
+  WikiJS: '#1E9EFF',
+  Gotenberg: '#8B5CF6',
+  Speedtest: '#00BBF5',
+}
 
-async function loadSi() {
-  if (Object.keys(siCache).length > 0) return siCache
+// Cache for loaded simple-icons module
+let siModule: any = null
+
+async function getSi() {
+  if (siModule) return siModule
   try {
-    const mod = await import('simple-icons')
-    siCache = mod
-  } catch {
-    // not available
-  }
-  return siCache
+    siModule = await import('simple-icons')
+  } catch { /* not available */ }
+  return siModule
 }
 
-function ServiceLogo({ name, size = 16 }: { name: string; size?: number }) {
+function ServiceLogo({ name, size = 18 }: { name: string; size?: number }) {
   const [svg, setSvg] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [hex, setHex] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    loadSi().then(si => {
+    getSi().then(si => {
       if (cancelled) return
-      const slug = LOGO_SLUGS[name]
-      if (!slug || !si) { setLoaded(true); return }
+      const key = LOGO_KEYS[name]
+      if (!key || !si) { setLoaded(true); return }
       try {
-        const icon = si.getIcon(slug)
-        if (icon) {
-          // simple-icons v9: icon.svg is available
-          const svgStr = (icon as any).svg
-          if (svgStr) { setSvg(svgStr); setLoaded(true); return }
+        const icon = (si as any)[key]
+        if (icon && icon.svg) {
+          setSvg(icon.svg)
+          setHex(icon.hex || null)
         }
       } catch { /* skip */ }
       setLoaded(true)
@@ -64,14 +82,24 @@ function ServiceLogo({ name, size = 16 }: { name: string; size?: number }) {
     return () => { cancelled = true }
   }, [name])
 
-  if (!loaded) return <Circle size={size} className="text-slate-500" />
-  if (!svg) return <Circle size={size} className="text-slate-500" />
+  if (!loaded) return <div style={{ width: size, height: size }} className="flex-shrink-0" />
+  if (!svg) return <Circle size={size} className="text-slate-500 flex-shrink-0" />
+
+  const bg = LOGO_COLORS[name] || hex || '#475569'
 
   return (
     <span
       dangerouslySetInnerHTML={{ __html: svg }}
-      style={{ width: size, height: size, display: 'inline-flex', alignItems: 'center' }}
-      className="flex-shrink-0"
+      style={{
+        width: size,
+        height: size,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: bg,
+        borderRadius: 4,
+        flexShrink: 0,
+      }}
     />
   )
 }
